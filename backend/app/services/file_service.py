@@ -39,6 +39,10 @@ class FileService:
         raw_files = minio_service.list_objects()
         files = [FileInfo(**file) for file in raw_files]
         return files
+    
+    def get_file(self, object_name: str) -> FileInfo:
+        file = minio_service.get_file(object_name)
+        return FileInfo(**file)
 
 
 file_service = FileService()

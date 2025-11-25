@@ -28,3 +28,8 @@ def get_all_files():
     """
     files = file_service.list_all_files()
     return files
+
+
+@router.get("/{object_name}", response_model=FileInfo)
+def get_file(object_name):
+    return file_service.get_file(object_name)
