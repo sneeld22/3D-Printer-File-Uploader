@@ -45,11 +45,22 @@ class MinioService:
         result = []
         for obj in objects:
             result.append({
-                "object_name": obj.object_name,
+                "filename": obj.object_name,
                 "size": obj.size,
                 "last_modified": obj.last_modified.isoformat() if obj.last_modified else None,
             })
         return result
+    
+    def get_file(self, object_name: str) -> dict:
+        try:
+            obj = self.client.stat_object(bucket_name=self.bucket_name, object_name=object_name)
+            return {
+                "object_name": obj.object_name,
+                "size": obj.size,
+                "last_modified": obj.last_modified.isoformat() if obj.last_modified else None,
+            }
+        except S3Error as e:
+            raise HTTPException(status_code=404, detail=f"File '{object_name}' not found")
 
 
 minio_service = MinioService()
