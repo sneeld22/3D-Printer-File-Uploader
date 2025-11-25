@@ -21,8 +21,8 @@ import {
     getMyFiles,
     deleteMyFile,
 } from "../../api/files";
-import type { ModelFile } from "../../api/files";
 import { useAuth } from "../../auth/AuthContext";
+import type {ModelFile} from "../../common/models.ts";
 
 const statusLabel: Record<ModelFile["status"], string> = {
     pending: "Pending verification",
@@ -127,10 +127,10 @@ const MyUploadsTable = () => {
                     <TableBody>
                         {files.map((file) => (
                             <TableRow key={file.id} hover>
-                                <TableCell>{file.filename}</TableCell>
+                                <TableCell>{file.object_name}</TableCell>
                                 <TableCell>{statusLabel[file.status]}</TableCell>
                                 <TableCell>
-                                    {new Date(file.createdAt).toLocaleString()}
+                                    {new Date(file.last_modified).toLocaleString()}
                                 </TableCell>
                                 <TableCell>{file.ownerName}</TableCell>
                                 <TableCell align="right">

@@ -1,6 +1,7 @@
 // src/api/files.ts
 import axios from "axios";
 import type { AxiosError } from "axios";
+import type {ModelFile} from "../common/models.ts";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
 
@@ -8,15 +9,6 @@ export interface UploadedFileResponse {
     id: string;
     filename: string;
     status: "pending" | "verified" | "rejected" | "queued" | "printing";
-}
-
-// New: full model file type for lists
-export interface ModelFile {
-    id: string;
-    filename: string;
-    status: "pending" | "verified" | "rejected" | "queued" | "printing";
-    ownerName: string;
-    createdAt: string; // ISO string
 }
 
 export async function uploadModelFile(
@@ -42,7 +34,7 @@ export async function uploadModelFile(
 
 // 🔹 Get all files of the currently logged-in user
 export async function getMyFiles(): Promise<ModelFile[]> {
-    const response = await axios.get(`${API_URL}/files/mine`);
+    const response = await axios.get(`${API_URL}/files/all`);
     return response.data;
 }
 
