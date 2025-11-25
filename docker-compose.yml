@@ -8,6 +8,8 @@ services:
       - MINIO_ENDPOINT=${MINIO_ENDPOINT}
       - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
       - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+      - MINIO_BUCKET=${MINIO_BUCKET}
+      - MINIO_SECURE=${MINIO_SECURE}
     depends_on:
       - db
       - minio
@@ -33,12 +35,14 @@ services:
 
   minio:
     image: minio/minio
-    command: server /data
+    command: ["server", "--console-address", ":9001", "/data"]
     environment:
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY}
+      - MINIO_DEFAULT_BUCKETS=${MINIO_BUCKET}
     ports:
-      - "9000:9000"
+     - "9000:9000"
+     - "9001:9001"
     volumes:
       - minio_data:/data
 
