@@ -4,6 +4,7 @@ from fastapi import HTTPException
 from app.core.config import settings
 import uuid
 from io import BytesIO
+from typing import List, Dict
 
 class MinioService:
     def __init__(self):
@@ -38,6 +39,17 @@ class MinioService:
                 status_code=500,
                 detail=f"MinIO upload error: {str(e)}"
             )
+        
+    def list_objects(self) -> list[dict]:
+        objects = self.client.list_objects(bucket_name=self.bucket_name, recursive=True)
+        result = []
+        for obj in objects:
+            result.append({
+                "object_name": obj.object_name,
+                "size": obj.size,
+                "last_modified": obj.last_modified.isoformat() if obj.last_modified else None,
+            })
+        return result
 
 
 minio_service = MinioService()

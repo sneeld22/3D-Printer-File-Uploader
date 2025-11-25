@@ -1,28 +1,30 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, status
-from app.services.minio_service import minio_service
+from fastapi import APIRouter, UploadFile, File, status
+from app.services.file_service import file_service
+from typing import List
+from app.schemas.files import UploadedFileResponse, FileInfo
 
 router = APIRouter()
 
-@router.post("/upload", status_code=status.HTTP_201_CREATED)
+@router.post("/upload", response_model=UploadedFileResponse, status_code=status.HTTP_201_CREATED)
 async def upload_file(file: UploadFile = File(...)):
     """
     Upload a file directly to MinIO.
     """
-    # Read file bytes
     file_bytes = await file.read()
 
-    # Generate unique object name
-    object_name = minio_service.generate_object_name(file.filename)
+    object_name = file_service.upload_file_to_minio(file_bytes, file.filename)
 
-    # Upload to MinIO
-    minio_service.upload(
-        file_obj=file_bytes,
+    return UploadedFileResponse(
+        filename=file.filename,
         object_name=object_name,
-        length=len(file_bytes)
+        message="Upload successful"
     )
 
-    return {
-        "filename": file.filename,
-        "object_name": object_name,
-        "message": "Upload successful"
-    }
+
+@router.get("/all", response_model=List[FileInfo])
+def get_all_files():
+    """
+    Return a list of all filenames stored in MinIO.
+    """
+    files = file_service.list_all_files()
+    return files
