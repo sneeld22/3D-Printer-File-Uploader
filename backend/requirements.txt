@@ -4,4 +4,5 @@ minio
 python-dotenv
 pydantic
 pydantic-settings
-python-multipart 
+python-multipart
+sqlalchemy

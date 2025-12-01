@@ -45,7 +45,7 @@ class MinioService:
         result = []
         for obj in objects:
             result.append({
-                "filename": obj.object_name,
+                "object_name": obj.object_name,
                 "size": obj.size,
                 "last_modified": obj.last_modified.isoformat() if obj.last_modified else None,
             })
