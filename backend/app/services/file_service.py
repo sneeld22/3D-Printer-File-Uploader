@@ -1,17 +1,18 @@
 from fastapi import HTTPException, status
+from sqlalchemy.orm import Session
 from app.services.minio_service import minio_service
-from app.schemas.files import FileInfo
+from app.repos.model_file_repo import model_file_repo
+from app.schemas.files import FileUploadResponse, FileMetadataResponse
 from typing import List
+from uuid import UUID
+from datetime import datetime
 
 class FileService:
     def __init__(self):
         self.minio = minio_service
+        self.repo = model_file_repo
 
-    def upload_file_to_minio(self, file_bytes: bytes, filename: str) -> str:
-        """
-        Upload file bytes to MinIO and return the generated object name.
-        Raises HTTPException on failure.
-        """
+    def upload_file(self, db: Session, file_bytes: bytes, filename: str, uploader_id: UUID) -> str:
         object_name = self.minio.generate_object_name(filename)
         try:
             self.minio.upload(
@@ -20,29 +21,58 @@ class FileService:
                 length=len(file_bytes),
             )
         except HTTPException:
-            # Re-raise so the FastAPI exception handler can catch it
             raise
         except Exception as e:
-            # Wrap any other exception into HTTPException
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"File upload failed: {str(e)}"
             )
-        return object_name
+        
+        model_file = self.repo.create(db, filename, object_name, uploader_id)
+        
+        return FileUploadResponse(
+            id=model_file.id,
+            filename=model_file.filename,
+            message="Upload successful"
+        )
     
 
-    def list_all_files(self) -> List[FileInfo]:
-        """
-        List all object names in the MinIO bucket.
-        Returns a list of filenames (object names).
-        """
-        raw_files = minio_service.list_objects()
-        files = [FileInfo(**file) for file in raw_files]
-        return files
+    def list_all_files(self, db: Session) -> List[FileMetadataResponse]:
+        files = self.repo.list_all(db)
+         # Convert DB models to Pydantic responses with size & last_modified from MinIO
+        result = []
+        for file in files:
+            # Get MinIO metadata for size/last_modified
+            try:
+                minio_info = self.minio.get_file(file.minio_path)
+                size = minio_info["size"]
+                last_modified = datetime.fromisoformat(minio_info["last_modified"]) if minio_info["last_modified"] else None
+            except HTTPException:
+                size = 0
+                last_modified = None
+
+            result.append(FileMetadataResponse(
+                id=file.id,
+                filename=file.filename,
+                size=size,
+                last_modified=last_modified
+            ))
+        return result
     
-    def get_file(self, object_name: str) -> FileInfo:
-        file = minio_service.get_file(object_name)
-        return FileInfo(**file)
+    def get_file_metadata(self, db: Session, file_id: UUID) -> FileMetadataResponse:
+        file = self.repo.get_by_id(db, file_id)
+        if not file:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        minio_info = self.minio.get_file(file.minio_path)
+        last_modified = datetime.fromisoformat(minio_info["last_modified"]) if minio_info["last_modified"] else None
+
+        return FileMetadataResponse(
+            id=file.id,
+            filename=file.filename,
+            size=minio_info["size"],
+            last_modified=last_modified
+        )
 
 
 file_service = FileService()

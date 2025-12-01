@@ -1,11 +1,14 @@
 from pydantic import BaseModel
+from uuid import UUID
+from datetime import datetime
 
-class FileInfo(BaseModel):
-    object_name: str
-    size: int
-    last_modified: str | None = None
-
-class UploadedFileResponse(BaseModel):
+class FileUploadResponse(BaseModel):
+    id: UUID
     filename: str
-    object_name: str
     message: str
+
+class FileMetadataResponse(BaseModel):
+    id: UUID
+    filename: str
+    size: int
+    last_modified: datetime | None

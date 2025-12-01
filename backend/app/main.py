@@ -1,6 +1,11 @@
 from fastapi import FastAPI
 from app.api.v1 import api_router
 from fastapi.middleware.cors import CORSMiddleware
+from app.db.base import Base
+from app.db.session import engine
+
+# Create database tables
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="3D Print Portal", version="1.0.0")
 
