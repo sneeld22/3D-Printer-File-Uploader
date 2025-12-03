@@ -5,6 +5,7 @@ from app.core.config import settings
 import uuid
 from io import BytesIO
 from typing import List, Dict
+from io import BytesIO
 
 class MinioService:
     def __init__(self):
@@ -63,4 +64,19 @@ class MinioService:
             raise HTTPException(status_code=404, detail=f"File '{object_name}' not found")
 
 
+    def stream(self, object_name: str):
+        try:
+            response = self.client.get_object(self.bucket_name, object_name)
+
+            def file_iterator():
+                for chunk in response.stream(32 * 1024):  # 32 KB chunks
+                    yield chunk
+                response.close()
+                response.release_conn()
+
+            return file_iterator
+
+        except S3Error as e:
+            raise HTTPException(status_code=404, detail=f"File not found: {str(e)}")
+    
 minio_service = MinioService()

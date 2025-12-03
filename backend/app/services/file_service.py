@@ -73,6 +73,14 @@ class FileService:
             size=minio_info["size"],
             last_modified=last_modified
         )
+    
+    def stream_file(self, db: Session, file_id: UUID):
+        file_record = file_service.repo.get_by_id(db, file_id)
+        if not file_record:
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        return file_record.filename, self.minio.stream(file_record.minio_path)
+
 
 
 file_service = FileService()

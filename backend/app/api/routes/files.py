@@ -1,4 +1,5 @@
-from fastapi import APIRouter, UploadFile, File, status, Depends
+from fastapi import APIRouter, UploadFile, File, status, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from app.services.file_service import file_service
 from typing import List
@@ -31,4 +32,20 @@ def get_file(
     file_id: UUID,
     db: Session = Depends(get_db)
 ):
-    return file_service.get_file(db, file_id)
+    return file_service.get_file_metadata(db, file_id)
+
+
+@router.get("/{file_id}/download")
+def download_file(
+    file_id: UUID,
+    db: Session = Depends(get_db)
+):
+    filename, stream_generator = file_service.stream_file(db, file_id)
+
+    return StreamingResponse(
+        stream_generator(),
+        media_type="application/octet-stream",
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}"
+        }
+    )
