@@ -193,8 +193,7 @@ const FileUpload = () => {
                         icon={<CheckCircleIcon />}
                         sx={{ alignItems: "center" }}
                     >
-                        File <b>{uploadResult.filename}</b> uploaded successfully. Status:{" "}
-                        <b>{uploadResult.status}</b>
+                        File <b>{uploadResult.filename}</b> uploaded successfully
                     </Alert>
                 )}
 

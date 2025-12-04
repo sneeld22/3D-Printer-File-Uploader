@@ -1,6 +1,5 @@
 // src/components/upload/MyUploadsTable.tsx
 import { useEffect, useState } from "react";
-import type { MouseEvent } from "react";
 import {
     Alert,
     Box,
@@ -15,13 +14,12 @@ import {
     Typography,
     Tooltip,
 } from "@mui/material";
-import DeleteIcon from "@mui/icons-material/Delete";
 import RefreshIcon from "@mui/icons-material/Refresh";
+import DownloadIcon from "@mui/icons-material/Download";
 import {
     getMyFiles,
-    deleteMyFile,
+    downloadFile
 } from "../../api/files";
-import { useAuth } from "../../auth/AuthContext";
 import type {ModelFile} from "../../common/models.ts";
 
 const statusLabel: Record<ModelFile["status"], string> = {
@@ -33,11 +31,9 @@ const statusLabel: Record<ModelFile["status"], string> = {
 };
 
 const MyUploadsTable = () => {
-    const { user } = useAuth();
     const [files, setFiles] = useState<ModelFile[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
-    const [deletingId, setDeletingId] = useState<string | null>(null);
 
     const loadFiles = async () => {
         setLoading(true);
@@ -53,27 +49,27 @@ const MyUploadsTable = () => {
         }
     };
 
+    const handleDownload = async (fileId: string, filename: string) => {
+        try {
+            const blob = await downloadFile(fileId);
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = filename;  // set download filename
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error(error);
+            alert("Failed to download file.");
+        }
+    };
+
     useEffect(() => {
         void loadFiles();
     }, []);
 
-    const handleDeleteClick = async (
-        e: MouseEvent<HTMLButtonElement>,
-        id: string
-    ) => {
-        e.stopPropagation();
-        setDeletingId(id);
-        setError(null);
-        try {
-            await deleteMyFile(id);
-            setFiles((prev) => prev.filter((f) => f.id !== id));
-        } catch (err: unknown) {
-            console.error(err);
-            setError("Could not delete the file. Please try again.");
-        } finally {
-            setDeletingId(null);
-        }
-    };
 
     return (
         <Paper sx={{ mt: 4, p: 2 }}>
@@ -120,41 +116,26 @@ const MyUploadsTable = () => {
                             <TableCell>Filename</TableCell>
                             <TableCell>Status</TableCell>
                             <TableCell>Uploaded</TableCell>
-                            <TableCell>Owner</TableCell>
                             <TableCell align="right">Actions</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
                         {files.map((file) => (
                             <TableRow key={file.id} hover>
-                                <TableCell>{file.object_name}</TableCell>
+                                <TableCell>{file.filename}</TableCell>
                                 <TableCell>{statusLabel[file.status]}</TableCell>
                                 <TableCell>
                                     {new Date(file.last_modified).toLocaleString()}
                                 </TableCell>
-                                <TableCell>{file.ownerName}</TableCell>
                                 <TableCell align="right">
-                                    {/* Students, verifiers and admins can delete their OWN files.
-                      Backend should enforce this; here we just show the button
-                      when the logged-in user is the owner. */}
-                                    {user && user.name === file.ownerName && (
-                                        <Tooltip title="Delete file">
-                      <span>
-                        <IconButton
-                            size="small"
-                            color="error"
-                            onClick={(e) => void handleDeleteClick(e, file.id)}
-                            disabled={deletingId === file.id}
-                        >
-                          {deletingId === file.id ? (
-                              <CircularProgress size={18} />
-                          ) : (
-                              <DeleteIcon fontSize="small" />
-                          )}
-                        </IconButton>
-                      </span>
-                                        </Tooltip>
-                                    )}
+                                    <Tooltip title="Download file">
+                                        <IconButton
+                                            onClick={() => handleDownload(file.id, file.filename)}
+                                            size="small"
+                                        >
+                                            <DownloadIcon />
+                                        </IconButton>
+                                    </Tooltip>
                                 </TableCell>
                             </TableRow>
                         ))}

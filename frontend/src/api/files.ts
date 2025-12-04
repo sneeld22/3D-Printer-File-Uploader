@@ -8,7 +8,6 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
 export interface UploadedFileResponse {
     id: string;
     filename: string;
-    status: "pending" | "verified" | "rejected" | "queued" | "printing";
 }
 
 export async function uploadModelFile(
@@ -41,6 +40,14 @@ export async function getMyFiles(): Promise<ModelFile[]> {
 // 🔹 Delete one of my files
 export async function deleteMyFile(fileId: string): Promise<void> {
     await axios.delete(`${API_URL}/files/${fileId}`);
+}
+
+// 🔹 Download one of my files as a Blob
+export async function downloadFile(fileId: string): Promise<Blob> {
+    const response = await axios.get(`${API_URL}/files/${fileId}/download`, {
+        responseType: "blob",
+    });
+    return response.data;
 }
 
 // Optional helper if you want typed errors later
