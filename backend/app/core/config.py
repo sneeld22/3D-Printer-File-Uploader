@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     MINIO_BUCKET: str
 
     DATABASE_URL: str
+    ADMIN_USER: str
+    ADMIN_PASSWORD: str
+    JWT_SECRET: str
 
     class Config:
         env_file = ".env"  # loads environment variables from .env file automatically
