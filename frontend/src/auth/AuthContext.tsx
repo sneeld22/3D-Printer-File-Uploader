@@ -35,8 +35,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const fetchCurrentUser = async () => {
         try {
-            const res = await apiClient.get("/auth/me"); // Make sure backend exposes this
-            console.log(res);
+            const res = await apiClient.get("/auth/me");
             setUser(res.data);
         } catch {
             logout();
