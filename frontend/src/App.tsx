@@ -1,4 +1,3 @@
-// src/App.tsx
 import { Link, Route, Routes, useLocation, Navigate } from "react-router-dom";
 import {
     AppBar,
@@ -13,30 +12,33 @@ import UploadPage from "./pages/UploadPage";
 import VerificationPage from "./pages/VerificationPage";
 import PrinterPage from "./pages/PrinterPage";
 import { useAuth } from "./auth/AuthContext";
-import type { UserRole } from "./auth/AuthContext";
 import type { ReactNode } from "react";
 
+// Helper: check if user has any role in allowedRoles
+const hasRole = (user: any, allowedRoles: string[]) =>
+    user?.roles?.some((r: string) => allowedRoles.includes(r));
 
 interface RequireAuthProps {
     children: ReactNode;
-    allowedRoles: UserRole[];
+    allowedRoles?: string[];
 }
 
-
 const RequireAuth = ({ children, allowedRoles }: RequireAuthProps) => {
-    const { user } = useAuth();
+    const { user, loading } = useAuth();
+
+    if (loading) {
+        return <Typography>Loading...</Typography>;
+    }
 
     if (!user) {
         return <Navigate to="/login" replace />;
     }
 
-    if (!allowedRoles.includes(user.role)) {
+    if (allowedRoles && !hasRole(user, allowedRoles)) {
         return (
             <Box sx={{ p: 3 }}>
                 <Typography variant="h5">Not authorized</Typography>
-                <Typography variant="body1">
-                    You do not have permission to access this page.
-                </Typography>
+                <Typography>You do not have permission to access this page.</Typography>
             </Box>
         );
     }
@@ -45,12 +47,15 @@ const RequireAuth = ({ children, allowedRoles }: RequireAuthProps) => {
 };
 
 const App = () => {
-    const location = useLocation();
     const { user, logout } = useAuth();
-    const isLoginRoute = location.pathname === "/login" || location.pathname === "/";
+    const location = useLocation();
+
+    const isLoginRoute =
+        location.pathname === "/login" || location.pathname === "/";
 
     return (
         <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+            {/* Top navigation bar */}
             {!isLoginRoute && user && (
                 <AppBar position="static">
                     <Toolbar>
@@ -58,24 +63,30 @@ const App = () => {
                             3D Print Portal
                         </Typography>
 
-                        <Button color="inherit" component={Link} to="/upload">
-                            Upload
-                        </Button>
+                        {/* Upload: users with uploader/verifier/admin roles */}
+                        {hasRole(user, ["uploader", "verifier", "admin"]) && (
+                            <Button color="inherit" component={Link} to="/upload">
+                                Upload
+                            </Button>
+                        )}
 
-                        {(user.role === "verifier" || user.role === "admin") && (
+                        {/* Verification: verifier/admin */}
+                        {hasRole(user, ["verifier", "admin"]) && (
                             <Button color="inherit" component={Link} to="/verify">
                                 Verify
                             </Button>
                         )}
 
-                        {user.role === "admin" && (
+                        {/* Print Queue: admin only */}
+                        {hasRole(user, ["admin"]) && (
                             <Button color="inherit" component={Link} to="/printer">
                                 Printer Queue
                             </Button>
                         )}
 
+                        {/* Display logged-in user */}
                         <Typography variant="body2" sx={{ ml: 2, mr: 1 }}>
-                            {user.name} ({user.role})
+                            {user.username}
                         </Typography>
 
                         <Button color="inherit" onClick={logout}>
@@ -85,22 +96,23 @@ const App = () => {
                 </AppBar>
             )}
 
+            {/* Main app content */}
             <Container sx={{ flexGrow: 1, py: 3 }}>
                 <Routes>
                     <Route path="/" element={<Navigate to="/login" replace />} />
                     <Route path="/login" element={<LoginPage />} />
 
-                    {/* Student + Verifier + Admin */}
+                    {/* Upload: uploader + verifier + admin */}
                     <Route
                         path="/upload"
                         element={
-                            <RequireAuth allowedRoles={["student", "verifier", "admin"]}>
+                            <RequireAuth allowedRoles={["uploader", "verifier", "admin"]}>
                                 <UploadPage />
                             </RequireAuth>
                         }
                     />
 
-                    {/* Verifier + Admin */}
+                    {/* Verification */}
                     <Route
                         path="/verify"
                         element={
@@ -110,7 +122,7 @@ const App = () => {
                         }
                     />
 
-                    {/* Admin only */}
+                    {/* Printer Queue */}
                     <Route
                         path="/printer"
                         element={

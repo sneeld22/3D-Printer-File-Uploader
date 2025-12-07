@@ -1,9 +1,10 @@
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
-from jose import jwt, JWTError
 from app.db.models import User
 from app.core.config import settings
 from app.db.session import SessionLocal
+from app.services.auth_service import AuthService
+from sqlalchemy.orm import joinedload
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
 
@@ -16,13 +17,9 @@ def get_db():
 
 
 def get_current_user(token: str = Depends(oauth2_scheme), db=Depends(get_db)):
-    try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
-        user_id: str = payload.get("sub")
-    except JWTError:
-        raise HTTPException(401, "Invalid token")
+    user_id = AuthService.verify_token(token)
+    user = db.query(User).options(joinedload(User.roles)).filter(User.id == user_id).first()
 
-    user = db.query(User).get(user_id)
     if not user:
         raise HTTPException(404, "User not found")
 

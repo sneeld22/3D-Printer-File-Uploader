@@ -1,56 +1,53 @@
-import { Box, Button, Typography, Paper, Stack } from "@mui/material";
+import { useState } from "react";
+import { Box, Button, TextField, Typography, Paper, Stack } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 
 const LoginPage = () => {
-    const { loginAsRole } = useAuth();
     const navigate = useNavigate();
+    const { login } = useAuth();
 
-    const handleLogin = (role: "student" | "verifier" | "admin") => {
-        loginAsRole(role);
-        navigate("/upload"); // redirect after login
+    const [username, setUsername] = useState("");
+    const [password, setPassword] = useState("");
+    const [error, setError] = useState("");
+
+    const handleLogin = async () => {
+        try {
+            setError("");
+            await login(username, password);
+            navigate("/upload");
+        } catch (err) {
+            setError("Invalid username or password");
+        }
     };
 
     return (
-        <Box
-            sx={{
-                minHeight: "100vh",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-            }}
-        >
+        <Box sx={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <Paper sx={{ p: 4, width: 400, textAlign: "center" }}>
                 <Typography variant="h5" gutterBottom>
-                    3D Print Portal
+                    Login
                 </Typography>
 
-                <Typography variant="body1" sx={{ mb: 3 }}>
-                    Log in with a role (temporary).
-                    Real school Active Directory login will be added later.
-                </Typography>
+                <Stack spacing={2} sx={{ mt: 2 }}>
+                    <TextField
+                        label="Username"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        fullWidth
+                    />
 
-                <Stack spacing={2}>
-                    <Button
-                        variant="contained"
-                        onClick={() => handleLogin("student")}
-                    >
-                        Login as Student
-                    </Button>
+                    <TextField
+                        label="Password"
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        fullWidth
+                    />
 
-                    <Button
-                        variant="contained"
-                        color="secondary"
-                        onClick={() => handleLogin("verifier")}
-                    >
-                        Login as Verifier
-                    </Button>
+                    {error && <Typography color="error">{error}</Typography>}
 
-                    <Button
-                        variant="outlined"
-                        onClick={() => handleLogin("admin")}
-                    >
-                        Login as Admin
+                    <Button variant="contained" onClick={handleLogin}>
+                        Login
                     </Button>
                 </Stack>
             </Paper>

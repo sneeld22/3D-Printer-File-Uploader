@@ -14,8 +14,8 @@ import {
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
-import { uploadModelFile } from "../../api/files";
-import type { UploadedFileResponse } from "../../api/files";
+import { uploadModelFile } from "../../services/fileService.ts";
+import type { UploadedFileResponse } from "../../services/fileService.ts";
 
 const ALLOWED_EXTENSIONS = ["stl", "3mf"];
 const MAX_FILE_SIZE_MB = 50;

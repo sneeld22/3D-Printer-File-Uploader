@@ -1,4 +1,3 @@
-// src/pages/UploadPage.tsx
 import { Box, Typography } from "@mui/material";
 import FileUpload from "../components/upload/FileUpload";
 import MyUploadsTable from "../components/upload/MyUploadsTable";

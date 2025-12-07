@@ -19,7 +19,7 @@ import DownloadIcon from "@mui/icons-material/Download";
 import {
     getMyFiles,
     downloadFile
-} from "../../api/files";
+} from "../../services/fileService.ts";
 import type {ModelFile} from "../../common/models.ts";
 
 const statusLabel: Record<ModelFile["status"], string> = {
