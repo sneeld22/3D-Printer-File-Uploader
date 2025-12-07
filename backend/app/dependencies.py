@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordBearer
 from app.db.models import User
 from app.core.config import settings
 from app.db.session import SessionLocal
-from app.services.auth_service import AuthService
+from app.services.auth_service import auth_service
 from sqlalchemy.orm import joinedload
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
@@ -17,7 +17,7 @@ def get_db():
 
 
 def get_current_user(token: str = Depends(oauth2_scheme), db=Depends(get_db)) -> User:
-    user_id = AuthService.verify_token(token)
+    user_id = auth_service.verify_token(token)
     user: User = db.query(User).options(joinedload(User.roles)).filter(User.id == user_id).first()
 
     if not user:
