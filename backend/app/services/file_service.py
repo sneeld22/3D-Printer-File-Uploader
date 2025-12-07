@@ -58,6 +58,28 @@ class FileService:
             ))
         return result
     
+    def list_files_by_user(self, db: Session, user_id: UUID) -> list[FileMetadataResponse]:
+        files = self.repo.list_by_user(db, user_id)
+
+        result = []
+        for file in files:
+            try:
+                minio_info = self.minio.get_file(file.minio_path)
+                size = minio_info["size"]
+                last_modified = datetime.fromisoformat(minio_info["last_modified"]) if minio_info["last_modified"] else None
+            except:
+                size = 0
+                last_modified = None
+
+            result.append(FileMetadataResponse(
+                id=file.id,
+                filename=file.filename,
+                size=size,
+                last_modified=last_modified
+            ))
+
+        return result
+    
     def get_file_metadata(self, db: Session, file_id: UUID) -> FileMetadataResponse:
         file = self.repo.get_by_id(db, file_id)
         if not file:

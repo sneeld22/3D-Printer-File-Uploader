@@ -23,9 +23,27 @@ async def upload_file(
 
 @router.get("/all", response_model=list[FileMetadataResponse])
 def get_all_files(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role([RoleEnum.admin])),
 ):
     return file_service.list_all_files(db)
+
+
+@router.get("/me", response_model=list[FileMetadataResponse])
+def get_my_files(
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role([RoleEnum.uploader, RoleEnum.admin]))
+):
+    return file_service.list_files_by_user(db, user.id)
+
+
+@router.get("/user/{user_id}", response_model=list[FileMetadataResponse])
+def get_files_by_user(
+    user_id: UUID,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role([RoleEnum.admin]))
+):
+    return file_service.list_files_by_user(db, user_id)
 
 
 @router.get("/{file_id}", response_model=FileMetadataResponse)

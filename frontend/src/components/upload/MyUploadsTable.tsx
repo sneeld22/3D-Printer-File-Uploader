@@ -1,4 +1,3 @@
-// src/components/upload/MyUploadsTable.tsx
 import { useEffect, useState } from "react";
 import {
     Alert,
