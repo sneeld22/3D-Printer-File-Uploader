@@ -2,9 +2,9 @@ from fastapi import APIRouter, UploadFile, File, status, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from app.services.file_service import file_service
-from typing import List
 from app.schemas.files import FileUploadResponse, FileMetadataResponse
-from app.dependencies import get_db
+from app.dependencies import get_db, require_role
+from app.db.models import User, RoleEnum
 from uuid import UUID
 
 router = APIRouter()
@@ -12,15 +12,16 @@ router = APIRouter()
 @router.post("/upload", response_model=FileUploadResponse, status_code=status.HTTP_201_CREATED)
 async def upload_file(
     file: UploadFile = File(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role([RoleEnum.uploader, RoleEnum.admin])),
 ):
     file_bytes = await file.read()
-    response = file_service.upload_file(db, file_bytes, file.filename, UUID("12345678-1234-5678-1234-567812345678"))
+    response = file_service.upload_file(db, file_bytes, file.filename, user.id)
 
     return response
 
 
-@router.get("/all", response_model=List[FileMetadataResponse])
+@router.get("/all", response_model=list[FileMetadataResponse])
 def get_all_files(
     db: Session = Depends(get_db)
 ):

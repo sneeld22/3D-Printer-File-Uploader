@@ -4,7 +4,6 @@ from fastapi import HTTPException
 from app.core.config import settings
 import uuid
 from io import BytesIO
-from typing import List, Dict
 from io import BytesIO
 
 class MinioService:

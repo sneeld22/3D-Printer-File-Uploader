@@ -3,7 +3,6 @@ from sqlalchemy.orm import Session
 from app.services.minio_service import minio_service
 from app.repos.model_file_repo import model_file_repo
 from app.schemas.files import FileUploadResponse, FileMetadataResponse
-from typing import List
 from uuid import UUID
 from datetime import datetime
 
@@ -37,7 +36,7 @@ class FileService:
         )
     
 
-    def list_all_files(self, db: Session) -> List[FileMetadataResponse]:
+    def list_all_files(self, db: Session) -> list[FileMetadataResponse]:
         files = self.repo.list_all(db)
          # Convert DB models to Pydantic responses with size & last_modified from MinIO
         result = []

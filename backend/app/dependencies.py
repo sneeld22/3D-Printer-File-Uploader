@@ -16,11 +16,20 @@ def get_db():
         db.close()
 
 
-def get_current_user(token: str = Depends(oauth2_scheme), db=Depends(get_db)):
+def get_current_user(token: str = Depends(oauth2_scheme), db=Depends(get_db)) -> User:
     user_id = AuthService.verify_token(token)
-    user = db.query(User).options(joinedload(User.roles)).filter(User.id == user_id).first()
+    user: User = db.query(User).options(joinedload(User.roles)).filter(User.id == user_id).first()
 
     if not user:
         raise HTTPException(404, "User not found")
 
     return user
+
+
+def require_role(roles: list[str]):
+    def wrapper(user: User = Depends(get_current_user)):
+        user_roles = [r.role_id for r in user.roles]
+        if not set(roles).intersection(user_roles):
+            raise HTTPException(403, "Not allowed")
+        return user
+    return wrapper
