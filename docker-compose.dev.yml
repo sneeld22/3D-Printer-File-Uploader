@@ -1,10 +1,12 @@
 services:
   backend:
-    build:
+    build: 
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     ports:
       - "8000:8000"
+    volumes:
+      - ./backend:/app
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - MINIO_ENDPOINT=${MINIO_ENDPOINT}
@@ -18,14 +20,21 @@ services:
     depends_on:
       - db
       - minio
+
   
-  frontend: 
-   build:
+  frontend:
+    build:
       context: ./frontend
-      dockerfile: Dockerfile
-   ports:
-     - "3000:3000" 
-    
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    command: npm run dev -- --host
+
 
   db:
     image: postgres:15
