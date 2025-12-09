@@ -24,7 +24,7 @@ async def upload_file(
 @router.get("/all", response_model=list[FileMetadataResponse])
 def get_all_files(
     db: Session = Depends(get_db),
-    _: User = Depends(require_role([RoleEnum.admin])),
+    _: User = Depends(require_role([RoleEnum.admin, RoleEnum.downloader, RoleEnum.verifier])),
 ):
     return file_service.list_all_files(db)
 
@@ -51,7 +51,7 @@ def get_file(
     file_id: UUID,
     db: Session = Depends(get_db)
 ):
-    return file_service.get_file_metadata(db, file_id)
+    return file_service.get_file(db, file_id)
 
 
 @router.get("/{file_id}/download")

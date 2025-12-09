@@ -2,7 +2,7 @@ import uuid
 import enum
 from datetime import datetime
 from sqlalchemy import (
-    Column, String, Enum, ForeignKey, TIMESTAMP, Text, Integer
+    Column, String, Enum, ForeignKey, TIMESTAMP, Text, Integer, BigInteger
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -72,9 +72,10 @@ class ModelFile(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     minio_path = Column(String(255), nullable=False)
     filename = Column(String(255), nullable=False)
+    size = Column(BigInteger, nullable=False)
     uploader_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    created_at = Column(TIMESTAMP, default=datetime.utcnow)
-
+    created_at = Column(TIMESTAMP, default=datetime.now())
+    
     uploader = relationship("User", back_populates="uploaded_files")
     verifications = relationship("ModelVerification", back_populates="model_file")
     print_jobs = relationship("PrintJob", back_populates="model_file")

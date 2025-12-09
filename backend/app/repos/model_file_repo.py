@@ -4,10 +4,11 @@ from uuid import UUID
 from datetime import datetime
 
 class ModelFileRepository:
-    def create(self, db: Session, filename: str, minio_path: str, uploader_id: UUID) -> ModelFile:
+    def create(self, db: Session, filename: str, minio_path: str, uploader_id: UUID, size: int) -> ModelFile:
         model_file = ModelFile(
             filename=filename,
             minio_path=minio_path,
+            size=size,
             uploader_id=uploader_id,
             created_at=datetime.now()
         )

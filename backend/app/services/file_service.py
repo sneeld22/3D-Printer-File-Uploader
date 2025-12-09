@@ -27,7 +27,7 @@ class FileService:
                 detail=f"File upload failed: {str(e)}"
             )
         
-        model_file = self.repo.create(db, filename, object_name, uploader_id)
+        model_file = self.repo.create(db, filename, object_name, uploader_id, size=len(file_bytes))
         
         return FileUploadResponse(
             id=model_file.id,
@@ -38,23 +38,15 @@ class FileService:
 
     def list_all_files(self, db: Session) -> list[FileMetadataResponse]:
         files = self.repo.list_all(db)
-         # Convert DB models to Pydantic responses with size & last_modified from MinIO
         result = []
         for file in files:
-            # Get MinIO metadata for size/last_modified
-            try:
-                minio_info = self.minio.get_file(file.minio_path)
-                size = minio_info["size"]
-                last_modified = datetime.fromisoformat(minio_info["last_modified"]) if minio_info["last_modified"] else None
-            except HTTPException:
-                size = 0
-                last_modified = None
-
             result.append(FileMetadataResponse(
                 id=file.id,
                 filename=file.filename,
-                size=size,
-                last_modified=last_modified
+                size=file.size,
+                user_id=file.uploader_id,
+                created_at=file.created_at,
+                verification_status="pending"
             ))
         return result
     
@@ -63,36 +55,28 @@ class FileService:
 
         result = []
         for file in files:
-            try:
-                minio_info = self.minio.get_file(file.minio_path)
-                size = minio_info["size"]
-                last_modified = datetime.fromisoformat(minio_info["last_modified"]) if minio_info["last_modified"] else None
-            except:
-                size = 0
-                last_modified = None
-
             result.append(FileMetadataResponse(
                 id=file.id,
                 filename=file.filename,
-                size=size,
-                last_modified=last_modified
+                size=file.size,
+                user_id=file.uploader_id,
+                created_at=file.created_at,
+                verification_status="pending"
             ))
-
         return result
     
-    def get_file_metadata(self, db: Session, file_id: UUID) -> FileMetadataResponse:
+    def get_file(self, db: Session, file_id: UUID) -> FileMetadataResponse:
         file = self.repo.get_by_id(db, file_id)
         if not file:
             raise HTTPException(status_code=404, detail="File not found")
 
-        minio_info = self.minio.get_file(file.minio_path)
-        last_modified = datetime.fromisoformat(minio_info["last_modified"]) if minio_info["last_modified"] else None
-
         return FileMetadataResponse(
             id=file.id,
             filename=file.filename,
-            size=minio_info["size"],
-            last_modified=last_modified
+            size=file.size,
+            user_id=file.uploader_id,
+            created_at=file.created_at,
+            verification_status="pending"
         )
     
     def stream_file(self, db: Session, file_id: UUID):
