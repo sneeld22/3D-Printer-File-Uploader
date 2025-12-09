@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from app.db.models import ModelFile
 from uuid import UUID
 from datetime import datetime
+from app.db.models import VerificationStatus, ModelVerification
 
 class ModelFileRepository:
     def create(self, db: Session, filename: str, minio_path: str, uploader_id: UUID, size: int) -> ModelFile:
@@ -28,7 +29,18 @@ class ModelFileRepository:
         )
     
     def list_unverified_files(self, db: Session) -> list[ModelFile]:
-        return db.query(ModelFile).filter(~ModelFile.verifications.any())
+        return (
+            db.query(ModelFile)
+            .filter(ModelFile.latest_verification == None)
+            .all()
+        )
+
+    def list_by_verification_status(self, db: Session, status: VerificationStatus):
+        return (
+            db.query(ModelFile)
+            .filter(ModelFile.latest_verification != None and ModelFile.latest_verification.status == status)
+            .all()
+        )
 
     def get_by_id(self, db: Session, file_id: UUID) -> ModelFile:
         return db.query(ModelFile).filter(ModelFile.id == file_id).first()

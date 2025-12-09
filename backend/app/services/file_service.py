@@ -5,7 +5,7 @@ from app.repos.model_file_repo import model_file_repo
 from app.schemas.files import FileUploadResponse, FileMetadataResponse
 from uuid import UUID
 from datetime import datetime
-from app.repos.verification_repo import verification_repo
+from app.db.models import ModelFile
 
 class FileService:
     def __init__(self):
@@ -39,80 +39,22 @@ class FileService:
 
     def list_all_files(self, db: Session) -> list[FileMetadataResponse]:
         files = self.repo.list_all(db)
-        result = []
-        for file in files:
-            verification = verification_repo.get_latest(db, file.id)
-            status = "pending"
-            if verification != None:
-                status = verification.status
-            
-            result.append(FileMetadataResponse(
-                id=file.id,
-                filename=file.filename,
-                size=file.size,
-                user_id=file.uploader_id,
-                created_at=file.created_at,
-                verification_status=status
-            ))
-        return result
+        return [self._build_file_metadata(db, file) for file in files]
     
     def list_unverified_files(self, db: Session) -> list[FileMetadataResponse]:
         files = self.repo.list_unverified_files(db)
-        result = []
-        for file in files:
-            verification = verification_repo.get_latest(db, file.id)
-            status = "pending"
-            if verification != None:
-                status = verification.status
-
-            result.append(FileMetadataResponse(
-                id=file.id,
-                filename=file.filename,
-                size=file.size,
-                user_id=file.uploader_id,
-                created_at=file.created_at,
-                verification_status=status
-            ))
-        return result
+        return [self._build_file_metadata(db, file) for file in files]
     
     def list_files_by_user(self, db: Session, user_id: UUID) -> list[FileMetadataResponse]:
         files = self.repo.list_by_user(db, user_id)
-
-        result = []
-        for file in files:
-            verification = verification_repo.get_latest(db, file.id)
-            status = "pending"
-            if verification != None:
-                status = verification.status
-
-            result.append(FileMetadataResponse(
-                id=file.id,
-                filename=file.filename,
-                size=file.size,
-                user_id=file.uploader_id,
-                created_at=file.created_at,
-                verification_status=status
-            ))
-        return result
+        return [self._build_file_metadata(db, file) for file in files]
     
     def get_file(self, db: Session, file_id: UUID) -> FileMetadataResponse:
         file = self.repo.get_by_id(db, file_id)
         if not file:
             raise HTTPException(status_code=404, detail="File not found")
         
-        verification = verification_repo.get_latest(db, file.id)
-        status = "pending"
-        if verification != None:
-            status = verification.status
-
-        return FileMetadataResponse(
-            id=file.id,
-            filename=file.filename,
-            size=file.size,
-            user_id=file.uploader_id,
-            created_at=file.created_at,
-            verification_status=status
-        )
+        return self._build_file_metadata(db, file)
     
     def stream_file(self, db: Session, file_id: UUID):
         file_record = file_service.repo.get_by_id(db, file_id)
@@ -120,6 +62,20 @@ class FileService:
             raise HTTPException(status_code=404, detail="File not found")
         
         return file_record.filename, self.minio.stream(file_record.minio_path)
+    
+
+    def _build_file_metadata(self, db: Session, file: ModelFile) -> FileMetadataResponse:
+        verification = file.latest_verification
+        status = verification.status if verification else "pending"
+
+        return FileMetadataResponse(
+            id=file.id,
+            filename=file.filename,
+            size=file.size,
+            user_id=file.uploader_id,
+            created_at=file.created_at,
+            verification_status=status,
+        )
 
 
 

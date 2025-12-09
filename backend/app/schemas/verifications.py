@@ -6,4 +6,4 @@ from app.db.models import VerificationStatus
 class VerificationCreate(BaseModel):
     file_id: UUID
     status: VerificationStatus
-    message: str | None = None
+    comments: str | None = None

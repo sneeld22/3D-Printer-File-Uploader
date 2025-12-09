@@ -80,6 +80,14 @@ class ModelFile(Base):
     verifications = relationship("ModelVerification", back_populates="model_file")
     print_jobs = relationship("PrintJob", back_populates="model_file")
 
+    latest_verification = relationship(
+        "ModelVerification",
+        primaryjoin="and_(ModelVerification.model_file_id == ModelFile.id)",
+        order_by="desc(ModelVerification.created_at)",
+        uselist=False,
+        viewonly=True,
+    )
+
 
 # ------------------------------
 # MODEL VERIFICATIONS
