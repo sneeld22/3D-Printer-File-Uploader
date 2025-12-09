@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-from jose import jwt
 from app.core.config import settings
 from jose import jwt, JWTError
 from fastapi import HTTPException
@@ -12,7 +11,7 @@ class AuthService:
     
     def create_access_token(self, data: dict):
         to_encode = data.copy()
-        expire = datetime.utcnow() + timedelta(minutes=self.expires_minutes)
+        expire = datetime.now() + timedelta(minutes=self.expires_minutes)
         to_encode["exp"] = expire
         return jwt.encode(to_encode, self.secret, algorithm=self.algorithm)
 

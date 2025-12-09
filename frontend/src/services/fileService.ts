@@ -30,6 +30,7 @@ export async function uploadModelFile(
 // 🔹 Get all files of the currently logged-in user
 export async function getMyFiles(): Promise<ModelFile[]> {
     const response = await apiClient.get(`/files/me`);
+    console.log(response.data);
     return response.data;
 }
 

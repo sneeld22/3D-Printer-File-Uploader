@@ -1,0 +1,73 @@
+//////////////////////////////////////////////////////
+// USERS & ROLES
+//////////////////////////////////////////////////////
+
+Table users {
+  id              uuid [pk]
+  username        varchar(255) [not null, unique]
+  password_hash   varchar(255) [not null]
+}
+
+Enum role {
+  uploader
+  verifier
+  downloader
+  admin
+}
+
+Table user_roles {
+  user_id  uuid [pk, not null, ref: > users.id]
+  role_id  role [pk]
+}
+
+//////////////////////////////////////////////////////
+// 3D MODEL STORAGE / METADATA
+//////////////////////////////////////////////////////
+
+
+Table model_files {
+  id            uuid [pk]
+  minio_path    varchar(255) [not null]
+  filename      varchar(255) [not null]
+  uploader_id   uuid [not null, ref: > users.id]
+  created_at    timestamp
+}
+
+//////////////////////////////////////////////////////
+// VERIFICATION WORKFLOW
+//////////////////////////////////////////////////////
+
+Enum verification_status {
+  approved
+  rejected
+}
+
+Table model_verifications {
+  id             serial [pk]
+  model_file_id  uuid [not null, ref: > model_files.id]
+  verifier_id    uuid [not null, ref: > users.id]
+  status         verification_status
+  comments       text
+  created_at     timestamp
+}
+
+//////////////////////////////////////////////////////
+// PRINT JOBS
+//////////////////////////////////////////////////////
+
+Enum print_status {
+  queued
+  printing
+  completed
+  failed
+}
+
+Table print_jobs {
+  id               uuid [pk]
+  model_file_id    uuid [not null, ref: > model_files.id]
+  requested_by     uuid [not null, ref: > users.id]
+  status           print_status
+  started_at       timestamp
+  completed_at     timestamp
+  created_at       timestamp
+}

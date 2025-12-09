@@ -11,4 +11,6 @@ class FileMetadataResponse(BaseModel):
     id: UUID
     filename: str
     size: int
-    last_modified: datetime | None
+    user_id: UUID
+    created_at: datetime
+    verification_status: str

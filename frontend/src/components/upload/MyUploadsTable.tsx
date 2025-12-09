@@ -21,14 +21,6 @@ import {
 } from "../../services/fileService.ts";
 import type {ModelFile} from "../../common/models.ts";
 
-const statusLabel: Record<ModelFile["status"], string> = {
-    pending: "Pending verification",
-    verified: "Verified",
-    rejected: "Rejected",
-    queued: "Queued for printing",
-    printing: "Printing",
-};
-
 const MyUploadsTable = () => {
     const [files, setFiles] = useState<ModelFile[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
@@ -122,9 +114,9 @@ const MyUploadsTable = () => {
                         {files.map((file) => (
                             <TableRow key={file.id} hover>
                                 <TableCell>{file.filename}</TableCell>
-                                <TableCell>{statusLabel[file.status]}</TableCell>
+                                <TableCell>{file.verification_status}</TableCell>
                                 <TableCell>
-                                    {new Date(file.last_modified).toLocaleString()}
+                                    {new Date(file.created_at).toLocaleString()}
                                 </TableCell>
                                 <TableCell align="right">
                                     <Tooltip title="Download file">
