@@ -45,3 +45,18 @@ export async function downloadFile(fileId: string): Promise<Blob> {
     });
     return response.data;
 }
+
+// 🔹 Get all files that are not verified yet (for verifier/admin)
+export async function getPendingFiles(): Promise<ModelFile[]> {
+    const response = await apiClient.get(`/files/unverified`);
+    console.log(response)
+    return response.data;
+}
+
+// 🔹 Set verification decision for a file (approve / reject)
+export async function setVerificationDecision(
+    fileId: string,
+    decision: "approve" | "reject"
+): Promise<void> {
+    await apiClient.post(`/files/${fileId}/verify`, { decision });
+}
