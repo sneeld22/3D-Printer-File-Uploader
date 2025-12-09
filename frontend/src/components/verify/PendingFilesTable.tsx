@@ -1,4 +1,3 @@
-// src/components/verifie/PendingFilesTable.tsx
 import type { FC } from "react";
 import {
     Box,

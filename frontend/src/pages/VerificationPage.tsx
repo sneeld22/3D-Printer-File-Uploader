@@ -11,19 +11,19 @@ import {
     Typography,
 } from "@mui/material";
 
-import File3dPreview from "../components/verifie/File3dPreview.tsx";
-import PendingFilesTable from "../components/verifie/PendingFilesTable.tsx";
+import File3dPreview from "../components/verify/File3dPreview.tsx";
+import PendingFilesTable from "../components/verify/PendingFilesTable.tsx";
 
 import {setVerificationDecision} from "../services/fileService.ts";
- import {getPendingFiles} from "../services/fileService.ts";
-import type { ModelFile } from "../common/models.ts";
+import {getPendingFiles} from "../services/fileService.ts";
+import { VerificationStatus, type ModelFile } from "../common/models.ts";
 
 const VerificationPage: FC = () => {
     const [files, setFiles] = useState<ModelFile[]>([]);
     const [selectedFile, setSelectedFile] = useState<ModelFile | null>(null);
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
-    const [updatingDecision, setUpdatingDecision] = useState<"approve" | "reject" | null>(null);
+    const [updatingDecision, setUpdatingDecision] = useState<VerificationStatus|null>(null);
 
     const loadPendingFiles = async () => {
         setLoading(true);
@@ -53,7 +53,7 @@ const VerificationPage: FC = () => {
         setSelectedFile(file);
     };
 
-    const handleDecision = async (decision: "approve" | "reject") => {
+    const handleDecision = async (decision: VerificationStatus) => {
         if (!selectedFile) return;
         setUpdatingDecision(decision);
         setError(null);
@@ -159,10 +159,10 @@ const VerificationPage: FC = () => {
                                         color="error"
                                         disabled={updatingDecision !== null}
                                         onClick={() =>
-                                            void handleDecision("reject")
+                                            void handleDecision(VerificationStatus.Rejected)
                                         }
                                     >
-                                        {updatingDecision === "reject"
+                                        {updatingDecision === VerificationStatus.Rejected
                                             ? "Rejecting…"
                                             : "Reject"}
                                     </Button>
@@ -171,10 +171,10 @@ const VerificationPage: FC = () => {
                                         color="primary"
                                         disabled={updatingDecision !== null}
                                         onClick={() =>
-                                            void handleDecision("approve")
+                                            void handleDecision(VerificationStatus.Approved)
                                         }
                                     >
-                                        {updatingDecision === "approve"
+                                        {updatingDecision === VerificationStatus.Approved
                                             ? "Approving…"
                                             : "Approve"}
                                     </Button>

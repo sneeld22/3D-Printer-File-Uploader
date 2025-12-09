@@ -1,5 +1,5 @@
 import apiClient from "../api/api-client.ts";
-import type {ModelFile} from "../common/models.ts";
+import type {ModelFile, VerificationStatus} from "../common/models.ts";
 
 export interface UploadedFileResponse {
     id: string;
@@ -56,8 +56,8 @@ export async function getPendingFiles(): Promise<ModelFile[]> {
 
 // 🔹 Set verification decision for a file (approve / reject)
 export async function setVerificationDecision(
-    fileId: string,
-    decision: "approve" | "reject"
+    file_id: string,
+    status: VerificationStatus
 ): Promise<void> {
-    await apiClient.post(`/verifications`, { decision, fileId });
+    await apiClient.post(`/verifications`, { status, file_id });
 }
