@@ -59,5 +59,5 @@ export async function setVerificationDecision(
     fileId: string,
     decision: "approve" | "reject"
 ): Promise<void> {
-    await apiClient.post(`/files/${fileId}/verify`, { decision });
+    await apiClient.post(`/verifications`, { decision, fileId });
 }
