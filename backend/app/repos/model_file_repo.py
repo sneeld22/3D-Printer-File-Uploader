@@ -26,6 +26,9 @@ class ModelFileRepository:
             .filter(ModelFile.uploader_id == user_id)
             .all()
         )
+    
+    def list_unverified_files(self, db: Session) -> list[ModelFile]:
+        return db.query(ModelFile).filter(~ModelFile.verifications.any())
 
     def get_by_id(self, db: Session, file_id: UUID) -> ModelFile:
         return db.query(ModelFile).filter(ModelFile.id == file_id).first()

@@ -28,6 +28,13 @@ def get_all_files(
 ):
     return file_service.list_all_files(db)
 
+@router.get("/unverified", response_model=list[FileMetadataResponse])
+def get_pending_files(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role([RoleEnum.admin, RoleEnum.downloader, RoleEnum.verifier])),
+):
+    return file_service.list_unverified_files(db)
+
 
 @router.get("/me", response_model=list[FileMetadataResponse])
 def get_my_files(

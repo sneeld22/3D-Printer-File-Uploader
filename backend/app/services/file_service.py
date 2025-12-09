@@ -5,6 +5,7 @@ from app.repos.model_file_repo import model_file_repo
 from app.schemas.files import FileUploadResponse, FileMetadataResponse
 from uuid import UUID
 from datetime import datetime
+from app.repos.verification_repo import verification_repo
 
 class FileService:
     def __init__(self):
@@ -40,13 +41,37 @@ class FileService:
         files = self.repo.list_all(db)
         result = []
         for file in files:
+            verification = verification_repo.get_latest(db, file.id)
+            status = "pending"
+            if verification != None:
+                status = verification.status
+            
             result.append(FileMetadataResponse(
                 id=file.id,
                 filename=file.filename,
                 size=file.size,
                 user_id=file.uploader_id,
                 created_at=file.created_at,
-                verification_status="pending"
+                verification_status=status
+            ))
+        return result
+    
+    def list_unverified_files(self, db: Session) -> list[FileMetadataResponse]:
+        files = self.repo.list_unverified_files(db)
+        result = []
+        for file in files:
+            verification = verification_repo.get_latest(db, file.id)
+            status = "pending"
+            if verification != None:
+                status = verification.status
+
+            result.append(FileMetadataResponse(
+                id=file.id,
+                filename=file.filename,
+                size=file.size,
+                user_id=file.uploader_id,
+                created_at=file.created_at,
+                verification_status=status
             ))
         return result
     
@@ -55,13 +80,18 @@ class FileService:
 
         result = []
         for file in files:
+            verification = verification_repo.get_latest(db, file.id)
+            status = "pending"
+            if verification != None:
+                status = verification.status
+
             result.append(FileMetadataResponse(
                 id=file.id,
                 filename=file.filename,
                 size=file.size,
                 user_id=file.uploader_id,
                 created_at=file.created_at,
-                verification_status="pending"
+                verification_status=status
             ))
         return result
     
@@ -69,6 +99,11 @@ class FileService:
         file = self.repo.get_by_id(db, file_id)
         if not file:
             raise HTTPException(status_code=404, detail="File not found")
+        
+        verification = verification_repo.get_latest(db, file.id)
+        status = "pending"
+        if verification != None:
+            status = verification.status
 
         return FileMetadataResponse(
             id=file.id,
@@ -76,7 +111,7 @@ class FileService:
             size=file.size,
             user_id=file.uploader_id,
             created_at=file.created_at,
-            verification_status="pending"
+            verification_status=status
         )
     
     def stream_file(self, db: Session, file_id: UUID):
