@@ -18,6 +18,7 @@ class RoleEnum(enum.Enum):
     uploader = "uploader"
     verifier = "verifier"
     downloader = "downloader"
+    printer = "printer"
     admin = "admin"
 
 class VerificationStatus(enum.Enum):
@@ -74,7 +75,7 @@ class ModelFile(Base):
     filename = Column(String(255), nullable=False)
     size = Column(BigInteger, nullable=False)
     uploader_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    created_at = Column(TIMESTAMP, default=datetime.now())
+    created_at = Column(TIMESTAMP, default=datetime.utcnow())
     
     uploader = relationship("User", back_populates="uploaded_files")
     verifications = relationship("ModelVerification", back_populates="model_file")
@@ -84,6 +85,14 @@ class ModelFile(Base):
         "ModelVerification",
         primaryjoin="and_(ModelVerification.model_file_id == ModelFile.id)",
         order_by="desc(ModelVerification.created_at)",
+        uselist=False,
+        viewonly=True,
+    )
+
+    latest_print_job = relationship(
+        "PrintJob",
+        primaryjoin="PrintJob.model_file_id == ModelFile.id",
+        order_by="desc(PrintJob.created_at)",
         uselist=False,
         viewonly=True,
     )
@@ -100,7 +109,7 @@ class ModelVerification(Base):
     verifier_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     status = Column(Enum(VerificationStatus), nullable=False)
     comments = Column(Text)
-    created_at = Column(TIMESTAMP, default=datetime.utcnow)
+    created_at = Column(TIMESTAMP, default=datetime.utcnow())
 
     model_file = relationship("ModelFile", back_populates="verifications")
     verifier = relationship("User", back_populates="verifications")
@@ -118,7 +127,7 @@ class PrintJob(Base):
     status = Column(Enum(PrintStatus), nullable=False)
     started_at = Column(TIMESTAMP, nullable=True)
     completed_at = Column(TIMESTAMP, nullable=True)
-    created_at = Column(TIMESTAMP, default=datetime.utcnow)
+    created_at = Column(TIMESTAMP, default=datetime.utcnow())
 
     model_file = relationship("ModelFile", back_populates="print_jobs")
     requester = relationship("User", back_populates="print_jobs")
