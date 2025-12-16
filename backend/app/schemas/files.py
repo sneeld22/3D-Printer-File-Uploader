@@ -14,3 +14,4 @@ class FileMetadataResponse(BaseModel):
     user_id: UUID
     created_at: datetime
     verification_status: str
+    print_status: str

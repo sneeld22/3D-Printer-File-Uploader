@@ -66,7 +66,10 @@ class FileService:
 
     def _build_file_metadata(self, db: Session, file: ModelFile) -> FileMetadataResponse:
         verification = file.latest_verification
-        status = verification.status if verification else "pending"
+        verification_status = verification.status if verification else "pending"
+
+        print_job = file.latest_print_job
+        print_status = print_job.status if print_job else "pending"
 
         return FileMetadataResponse(
             id=file.id,
@@ -74,7 +77,8 @@ class FileService:
             size=file.size,
             user_id=file.uploader_id,
             created_at=file.created_at,
-            verification_status=status,
+            verification_status=verification_status,
+            print_status=print_status
         )
 
 
