@@ -14,3 +14,12 @@ export type ModelFile = {
     user_id: string,
     verification_status: VerificationStatus,
 }
+
+export const PrinterJobStatus = {
+  Queued: 'queued',
+  Printing: 'printing',
+  Rejected: 'rejected',
+  Failed: 'failed'
+} as const;
+
+export type PrinterJobStatus = typeof PrinterJobStatus[keyof typeof PrinterJobStatus];
