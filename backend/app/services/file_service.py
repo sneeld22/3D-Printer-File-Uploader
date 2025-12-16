@@ -5,7 +5,7 @@ from app.repos.model_file_repo import model_file_repo
 from app.schemas.files import FileUploadResponse, FileMetadataResponse
 from uuid import UUID
 from datetime import datetime
-from app.db.models import ModelFile
+from app.db.models import ModelFile, PrintStatus
 
 class FileService:
     def __init__(self):
@@ -43,6 +43,10 @@ class FileService:
     
     def list_unverified_files(self, db: Session) -> list[FileMetadataResponse]:
         files = self.repo.list_unverified_files(db)
+        return [self._build_file_metadata(db, file) for file in files]
+
+    def list_queued_files(self, db: Session) -> list[FileMetadataResponse]:
+        files = self.repo.list_by_print_status(db, PrintStatus.queued)
         return [self._build_file_metadata(db, file) for file in files]
     
     def list_files_by_user(self, db: Session, user_id: UUID) -> list[FileMetadataResponse]:

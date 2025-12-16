@@ -35,6 +35,12 @@ def get_pending_files(
 ):
     return file_service.list_unverified_files(db)
 
+@router.get("/queued", response_model=list[FileMetadataResponse])
+def get_queued_files(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role([RoleEnum.admin, RoleEnum.downloader, RoleEnum.verifier])),
+):
+    return file_service.list_queued_files(db)
 
 @router.get("/me", response_model=list[FileMetadataResponse])
 def get_my_files(

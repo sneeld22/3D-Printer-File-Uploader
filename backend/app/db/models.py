@@ -91,7 +91,7 @@ class ModelFile(Base):
 
     latest_print_job = relationship(
         "PrintJob",
-        primaryjoin="PrintJob.model_file_id == ModelFile.id",
+        primaryjoin="and_(PrintJob.model_file_id == ModelFile.id)",
         order_by="desc(PrintJob.created_at)",
         uselist=False,
         viewonly=True,

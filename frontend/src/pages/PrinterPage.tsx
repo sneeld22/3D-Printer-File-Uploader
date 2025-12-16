@@ -14,91 +14,49 @@ import {
   Stack,
   CircularProgress,
 } from "@mui/material";
-import { useEffect, useState } from "react";
-import apiClient from "../api/api-client";
-import { VerificationStatus } from "../common/models";
-import type { ModelFile } from "../common/models";
 
-/**
- * API shape (created_at comes as string)
- */
-type ModelFileApi = Omit<ModelFile, "created_at"> & {
-  created_at: string;
-};
+import {
+  PrinterJobStatus,
+  VerificationStatus,
+} from "../common/models";
+import { usePrinterQueue } from "../hooks/usePrinterQueue";
+import { formatFileSize } from "../utils/utils";
 
-/**
- * Temporary printer status derived from verification status.
- */
-type PrinterJobStatus = "printing" | "queued" | "blocked";
-
-const mapToPrinterStatus = (file: ModelFile): PrinterJobStatus => {
-  if (file.verification_status === VerificationStatus.Approved) return "queued";
-  if (file.verification_status === VerificationStatus.Pending) return "blocked";
-  return "blocked";
-};
-
-const statusColor: Record<PrinterJobStatus, "success" | "warning" | "error"> = {
+const printStatusColor: Record<PrinterJobStatus, "success" | "warning" | "error" | "info" | "primary"> = {
+  pending: "warning",
+  queued: "info",
   printing: "success",
-  queued: "warning",
-  blocked: "error",
+  completed: "primary",
+  failed: "error",
 };
 
-const PrinterPage = () => {
-  const [files, setFiles] = useState<ModelFile[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function PrinterPage() {
+  const { jobs: unsortedJobs, loading } = usePrinterQueue();
 
-  useEffect(() => {
-    const fetchFiles = async () => {
-      try {
-        const res = await apiClient.get<ModelFileApi[]>("/files");
-
-        const converted: ModelFile[] = res.data.map((file) => ({
-          ...file,
-          created_at: new Date(file.created_at),
-        }));
-
-        setFiles(converted);
-      } catch (err) {
-        console.error("Failed to load printer queue", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchFiles();
-  }, []);
-
-  const jobs = files.map((file) => ({
-    ...file,
-    printerStatus: mapToPrinterStatus(file),
-  }));
+  // Sort jobs by created_at ascending (FIFO)
+  const jobs = [...unsortedJobs].sort(
+    (a, b) => a.created_at.getTime() - b.created_at.getTime()
+  );
 
   return (
     <Box sx={{ p: 4 }}>
       <Stack spacing={3}>
-        {/* Header */}
         <Box>
           <Typography variant="h4" fontWeight={600}>
             Printer Queue
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Models approved for printing and their current queue status
+            Files waiting to be printed
           </Typography>
         </Box>
 
-        {/* Summary Card (Queued only) */}
-        <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-          <Card sx={{ flex: 1 }}>
-            <CardContent>
-              <Typography variant="h6">Queued</Typography>
-              <Typography variant="h4">
-                {jobs.filter((j) => j.printerStatus === "queued").length}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Stack>
+        <Card>
+          <CardContent>
+            <Typography variant="h6">Queued</Typography>
+            <Typography variant="h4">{jobs.length}</Typography>
+          </CardContent>
+        </Card>
 
-        {/* Table */}
         <Card>
           <CardContent>
             <Typography variant="h6" gutterBottom>
@@ -114,35 +72,33 @@ const PrinterPage = () => {
                 <Table>
                   <TableHead>
                     <TableRow>
+                      <TableCell>Position</TableCell>
                       <TableCell>Filename</TableCell>
-                      <TableCell>Size (MB)</TableCell>
+                      <TableCell>Size</TableCell>
                       <TableCell>Uploaded</TableCell>
                       <TableCell>Verification</TableCell>
-                      <TableCell>Printer Status</TableCell>
+                      <TableCell>Print Status</TableCell>
                     </TableRow>
                   </TableHead>
 
                   <TableBody>
                     {jobs.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={5} align="center">
-                          No models in queue
+                        <TableCell colSpan={6} align="center">
+                          No queued jobs
                         </TableCell>
                       </TableRow>
                     ) : (
-                      jobs.map((job) => (
+                      jobs.map((job, index) => (
                         <TableRow key={job.id}>
+                          <TableCell>{index + 1}</TableCell>
                           <TableCell>{job.filename}</TableCell>
-                          <TableCell>
-                            {(job.size / 1024 / 1024).toFixed(2)}
-                          </TableCell>
-                          <TableCell>
-                            {job.created_at.toLocaleString()}
-                          </TableCell>
+                          <TableCell>{formatFileSize(job.size)}</TableCell>
+                          <TableCell>{job.created_at.toLocaleString()}</TableCell>
                           <TableCell>
                             <Chip
-                              label={job.verification_status}
                               size="small"
+                              label={job.verification_status}
                               color={
                                 job.verification_status === VerificationStatus.Approved
                                   ? "success"
@@ -154,9 +110,9 @@ const PrinterPage = () => {
                           </TableCell>
                           <TableCell>
                             <Chip
-                              label={job.printerStatus}
                               size="small"
-                              color={statusColor[job.printerStatus]}
+                              label={job.print_status}
+                              color={printStatusColor[job.print_status]}
                             />
                           </TableCell>
                         </TableRow>
@@ -171,6 +127,4 @@ const PrinterPage = () => {
       </Stack>
     </Box>
   );
-};
-
-export default PrinterPage;
+}

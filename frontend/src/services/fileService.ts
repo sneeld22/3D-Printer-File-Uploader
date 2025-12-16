@@ -50,7 +50,6 @@ export async function downloadFile(fileId: string): Promise<Blob> {
 // 🔹 Get all files that are not verified yet (for verifier/admin)
 export async function getPendingFiles(): Promise<ModelFile[]> {
     const response = await apiClient.get(`/files/unverified`);
-    console.log(response)
     return response.data;
 }
 
@@ -60,4 +59,9 @@ export async function setVerificationDecision(
     status: VerificationStatus
 ): Promise<void> {
     await apiClient.post(`/verifications`, { status, file_id });
+}
+
+export async function getQueuedFiles(): Promise<ModelFile[]> {
+    const response = await apiClient.get(`/files/queued`);
+    return response.data;
 }
