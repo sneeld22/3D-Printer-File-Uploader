@@ -13,6 +13,7 @@ import VerificationPage from "./pages/VerificationPage";
 import PrinterPage from "./pages/PrinterPage";
 import { useAuth } from "./auth/AuthContext";
 import type { ReactNode } from "react";
+import AllFilesPage from "./pages/AllFilesPage";
 
 // Helper: check if user has any role in allowedRoles
 const hasRole = (user: any, allowedRoles: string[]) =>
@@ -84,6 +85,13 @@ const App = () => {
                             </Button>
                         )}
 
+                        {/* Files Page: admin only */}
+                        {hasRole(user, ["admin"]) && (
+                            <Button color="inherit" component={Link} to="/files">
+                                All Files
+                            </Button>
+                        )}
+
                         {/* Display logged-in user */}
                         <Typography variant="body2" sx={{ ml: 2, mr: 1 }}>
                             {user.username}
@@ -128,6 +136,15 @@ const App = () => {
                         element={
                             <RequireAuth allowedRoles={["admin"]}>
                                 <PrinterPage />
+                            </RequireAuth>
+                        }
+                    />
+
+                    <Route
+                        path="/files"
+                        element={
+                            <RequireAuth allowedRoles={["admin"]}>
+                                <AllFilesPage />
                             </RequireAuth>
                         }
                     />
