@@ -60,6 +60,24 @@ class FileService:
         
         return self._build_file_metadata(db, file)
     
+
+    def delete_file(self, db: Session, file_id: UUID):
+        file = self.repo.get_by_id(db, file_id)
+        if not file:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        # Delete from MinIO
+        try:
+            self.minio.client.remove_object(self.minio.bucket_name, file.minio_path)
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to delete file from storage: {str(e)}"
+            )
+
+        # Delete from database
+        self.repo.delete(db, file)
+    
     def stream_file(self, db: Session, file_id: UUID):
         file_record = file_service.repo.get_by_id(db, file_id)
         if not file_record:

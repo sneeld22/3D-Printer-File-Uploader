@@ -78,8 +78,8 @@ class ModelFile(Base):
     created_at = Column(TIMESTAMP, default=datetime.utcnow())
     
     uploader = relationship("User", back_populates="uploaded_files")
-    verifications = relationship("ModelVerification", back_populates="model_file")
-    print_jobs = relationship("PrintJob", back_populates="model_file")
+    verifications = relationship("ModelVerification", back_populates="model_file", cascade="all, delete-orphan")
+    print_jobs = relationship("PrintJob", back_populates="model_file", cascade="all, delete-orphan")
 
     latest_verification = relationship(
         "ModelVerification",

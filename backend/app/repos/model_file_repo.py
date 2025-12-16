@@ -96,5 +96,9 @@ class ModelFileRepository:
 
     def get_by_id(self, db: Session, file_id: UUID) -> ModelFile:
         return db.query(ModelFile).filter(ModelFile.id == file_id).first()
+    
+    def delete(self, db: Session, model_file: ModelFile):
+        db.delete(model_file)
+        db.commit()
 
 model_file_repo = ModelFileRepository()
