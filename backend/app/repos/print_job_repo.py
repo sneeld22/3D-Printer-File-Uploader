@@ -14,7 +14,7 @@ class PrintJobRepository:
             model_file_id=model_file_id,
             requested_by=user_id,
             status=PrintStatus.queued,
-            created_at=datetime.now()
+            created_at=datetime.utcnow()
         )
         db.add(job)
         db.commit()
@@ -43,15 +43,26 @@ class PrintJobRepository:
 
         result = db.execute(stmt).scalars().first()
         return result
+    
+    def has_active_job(self, db: Session, file_id: UUID) -> bool:
+        return (
+            db.query(PrintJob)
+            .filter(
+                PrintJob.model_file_id == file_id,
+                PrintJob.status.in_([PrintStatus.queued, PrintStatus.printing])
+            )
+            .count()
+            > 0
+        )
 
     def mark_printing(self, db: Session, job: PrintJob):
         job.status = PrintStatus.printing
-        job.started_at = datetime.now()
+        job.started_at = datetime.utcnow()
         db.commit()
 
     def mark_completed(self, db: Session, job: PrintJob):
         job.status = PrintStatus.completed
-        job.completed_at = datetime.now()
+        job.completed_at = datetime.utcnow()
         db.commit()
 
     def mark_failed(self, db: Session, job: PrintJob):

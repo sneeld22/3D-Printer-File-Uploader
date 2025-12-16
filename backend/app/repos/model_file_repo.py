@@ -11,7 +11,7 @@ class ModelFileRepository:
             minio_path=minio_path,
             size=size,
             uploader_id=uploader_id,
-            created_at=datetime.now()
+            created_at=datetime.utcnow()
         )
         db.add(model_file)
         db.commit()
