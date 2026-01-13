@@ -1,11 +1,18 @@
+from app.core.logging import setup_logging
+setup_logging()  # MUST BE FIRST
+
 from fastapi import FastAPI
+#from app.api.v1 import api_router
+
 from app.api.v1 import api_router
 from fastapi.middleware.cors import CORSMiddleware
 from app.db.base import Base
 from app.db.session import engine, SessionLocal
 from app.db.models import User, UserRole, RoleEnum
 from app.core.config import settings
+
 import uuid
+
 
 def create_admin():
     db = SessionLocal()

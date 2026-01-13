@@ -7,12 +7,25 @@ from uuid import UUID
 from datetime import datetime
 from app.db.models import ModelFile, PrintStatus
 
+
+import logging
+
+logger = logging.getLogger(__name__)
 class FileService:
     def __init__(self):
         self.minio = minio_service
         self.repo = model_file_repo
 
-    def upload_file(self, db: Session, file_bytes: bytes, filename: str, uploader_id: UUID) -> str:
+    def upload_file(self, db: Session, file_bytes: bytes, filename: str, uploader_id: UUID) -> FileUploadResponse:
+        logger.info(
+            "Uploading file",
+            extra={
+                "file_name": filename,
+                "uploader_id": str(uploader_id),
+                "size": len(file_bytes),
+            },
+        )
+        
         object_name = self.minio.generate_object_name(filename)
         try:
             self.minio.upload(
@@ -23,9 +36,14 @@ class FileService:
         except HTTPException:
             raise
         except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"File upload failed: {str(e)}"
+            logger.exception(
+                "MinIO upload failed",
+                extra={"file_name": filename, "object_name": object_name},
+            )
+
+            raise HTTPException (
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"File upload failed: {str(e)}"    
             )
         
         model_file = self.repo.create(db, filename, object_name, uploader_id, size=len(file_bytes))
@@ -35,6 +53,8 @@ class FileService:
             filename=model_file.filename,
             message="Upload successful"
         )
+    
+
     
 
     def list_all_files(self, db: Session) -> list[FileMetadataResponse]:
@@ -56,7 +76,9 @@ class FileService:
     def get_file(self, db: Session, file_id: UUID) -> FileMetadataResponse:
         file = self.repo.get_by_id(db, file_id)
         if not file:
+            logger.warning("File not found", extra={"file_id": str(file_id)})
             raise HTTPException(status_code=404, detail="File not found")
+            
         
         return self._build_file_metadata(db, file)
     
@@ -64,12 +86,18 @@ class FileService:
     def delete_file(self, db: Session, file_id: UUID):
         file = self.repo.get_by_id(db, file_id)
         if not file:
+            logger.warning("Delete failed: file not found", extra={"file_id": str(file_id)})
             raise HTTPException(status_code=404, detail="File not found")
+            
 
         # Delete from MinIO
         try:
             self.minio.client.remove_object(self.minio.bucket_name, file.minio_path)
         except Exception as e:
+            logger.exception(
+            "Failed to delete file from MinIO",
+            extra={"file_id": str(file_id), "path": file.minio_path},
+            )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to delete file from storage: {str(e)}"
@@ -77,6 +105,7 @@ class FileService:
 
         # Delete from database
         self.repo.delete(db, file)
+        logger.info("File deleted", extra={"file_id": str(file_id)})
     
     def stream_file(self, db: Session, file_id: UUID):
         file_record = file_service.repo.get_by_id(db, file_id)
