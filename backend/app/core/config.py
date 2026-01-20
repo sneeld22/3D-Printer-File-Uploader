@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     ADMIN_PASSWORD: str
     JWT_SECRET: str
 
+    LDAP_SERVER: str
+    LDAP_DOMAIN: str
+    BASE_DN: str
+
     class Config:
         env_file = ".env"  # loads environment variables from .env file automatically
 

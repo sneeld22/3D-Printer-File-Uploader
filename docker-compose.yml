@@ -15,6 +15,9 @@ services:
       - ADMIN_USER=${ADMIN_USER}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - JWT_SECRET=${JWT_SECRET}
+      - LDAP_SERVER=${LDAP_SERVER}
+      - LDAP_DOMAIN=${LDAP_DOMAIN}
+      - BASE_DN=${BASE_DN}
     depends_on:
       - db
       - minio
