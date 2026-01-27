@@ -8,13 +8,19 @@ class LdapService:
         self.base_dn = settings.BASE_DN
         
     def ldap_authenticate(self, username: str, password: str) -> bool:
-        # For ldap.forumsys.com, username must be full DN, so build it:
-        user_dn = f"uid={username},{self.base_dn}"
-        
+        user = f"{self.ldap_domain}\\{username}"
+
         try:
             server = Server(self.ldap_server, get_info=ALL)
-            conn = Connection(server, user=user_dn, password=password, auto_bind=True)
-            return conn.bound
+            conn = Connection(
+                server,
+                user=user,
+                password=password,
+                authentication=NTLM,
+                auto_bind=True,
+            )
+            conn.unbind()
+            return True
         except Exception:
             return False
 
