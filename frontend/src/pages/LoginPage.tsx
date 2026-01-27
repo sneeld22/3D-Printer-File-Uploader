@@ -11,7 +11,8 @@ const LoginPage = () => {
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
 
-    const handleLogin = async () => {
+    const handleLogin = async (e: any) => {
+        e.preventDefault();
         try {
             setError("");
             await login(username, password);
@@ -22,34 +23,38 @@ const LoginPage = () => {
     };
 
     return (
-        <Box sx={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <Box
+            sx={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}
+        >
             <Paper sx={{ p: 4, width: 400, textAlign: "center" }}>
                 <Typography variant="h5" gutterBottom>
                     Login
                 </Typography>
 
-                <Stack spacing={2} sx={{ mt: 2 }}>
-                    <TextField
-                        label="Username"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        fullWidth
-                    />
+                <Box component="form" onSubmit={handleLogin}>
+                    <Stack spacing={2} sx={{ mt: 2 }}>
+                        <TextField
+                            label="Username"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            fullWidth
+                        />
 
-                    <TextField
-                        label="Password"
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        fullWidth
-                    />
+                        <TextField
+                            label="Password"
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            fullWidth
+                        />
 
-                    {error && <Typography color="error">{error}</Typography>}
+                        {error && <Typography color="error">{error}</Typography>}
 
-                    <Button variant="contained" onClick={handleLogin}>
-                        Login
-                    </Button>
-                </Stack>
+                        <Button variant="contained" type="submit">
+                            Login
+                        </Button>
+                    </Stack>
+                </Box>
             </Paper>
         </Box>
     );
