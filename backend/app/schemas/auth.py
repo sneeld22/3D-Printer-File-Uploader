@@ -2,10 +2,6 @@ from pydantic import BaseModel, ConfigDict, field_validator
 from app.db.models import RoleEnum
 from uuid import UUID
 
-class UserCreate(BaseModel):
-    username: str
-    password: str
-
 class UserLogin(BaseModel):
     username: str
     password: str

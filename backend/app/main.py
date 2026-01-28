@@ -10,26 +10,19 @@ from app.db.base import Base
 from app.db.session import engine, SessionLocal
 from app.db.models import User, UserRole, RoleEnum
 from app.core.config import settings
-
+from app.utils.bootstrap import bootstrap_roles
 import uuid
 
-
-def create_admin():
+def add_users():
     db = SessionLocal()
-    if not db.query(User).filter(User.username == settings.ADMIN_USER).first():
-        admin = User(
-            id=uuid.uuid4(),
-            username=settings.ADMIN_USER,
-            password_hash=User.hash_password(settings.ADMIN_PASSWORD)
-        )
-        db.add(admin)
-        db.commit()
-        db.add(UserRole(user_id=admin.id, role_id=RoleEnum.admin))
-        db.commit()
+    try:
+        bootstrap_roles(db)
+    finally:
+        db.close()
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
-create_admin()
+add_users()
 
 app = FastAPI(title="3D Print Portal", version="1.0.0")
 

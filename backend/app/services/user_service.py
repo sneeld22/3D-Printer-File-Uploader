@@ -79,7 +79,7 @@ class UserService:
             user = self.repo.get_by_username(db, username)
             if not user:
                 # Create user with a placeholder password (won't be used)
-                user = self.repo.create_user(db, username, User.hash_password("ldap_user"))
+                user = self.repo.create_user(db, username)
                 # Assign default role
                 self.repo.add_role(db, user.id, RoleEnum.uploader)
 

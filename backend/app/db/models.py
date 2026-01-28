@@ -40,19 +40,11 @@ class User(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     username = Column(String(255), unique=True, nullable=False)
-    password_hash = Column(String(255), nullable=False)
 
     roles = relationship("UserRole", back_populates="user")
     uploaded_files = relationship("ModelFile", back_populates="uploader")
     verifications = relationship("ModelVerification", back_populates="verifier")
     print_jobs = relationship("PrintJob", back_populates="requester")
-
-    def verify_password(self, password: str):
-        return pwd_context.verify(password, self.password_hash)
-
-    @staticmethod
-    def hash_password(password: str):
-        return pwd_context.hash(password)
 
 
 class UserRole(Base):
