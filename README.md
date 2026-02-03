@@ -35,3 +35,22 @@ This project is a web-based portal designed for school students to upload 3D mod
    ```bash
    git clone https://github.com/your-org/3d-printer-file-uploader.git
    cd 3d-printer-file-uploader
+
+2. Build and start the containers:
+   ```bash
+   docker-compose up --build
+
+3. Open your browser and navigate to http://localhost:3000 (or the configured frontend port).
+
+## Usage
+
+- Log in using your school LDAP account.  
+- Upload 3D model files via the web interface.  
+- Users with verifier roles can review and approve uploaded files.  
+- Approved files enter the printer queue and are automatically sent to the 3D printer.  
+- Monitor the status of your print jobs directly in the portal.
+
+## Project Structure
+
+- `/frontend` – React app with Material UI  
+- `/backend` – FastAPI backend handling API requests, file storage, and printer queue  
