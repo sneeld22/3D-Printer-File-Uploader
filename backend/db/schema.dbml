@@ -1,73 +1,57 @@
-//////////////////////////////////////////////////////
-// USERS & ROLES
-//////////////////////////////////////////////////////
-
-Table users {
-  id              uuid [pk]
-  username        varchar(255) [not null, unique]
-  password_hash   varchar(255) [not null]
-}
-
-Enum role {
+Enum RoleEnum {
   uploader
   verifier
   downloader
+  printer
   admin
 }
 
-Table user_roles {
-  user_id  uuid [pk, not null, ref: > users.id]
-  role_id  role [pk]
-}
-
-//////////////////////////////////////////////////////
-// 3D MODEL STORAGE / METADATA
-//////////////////////////////////////////////////////
-
-
-Table model_files {
-  id            uuid [pk]
-  minio_path    varchar(255) [not null]
-  filename      varchar(255) [not null]
-  uploader_id   uuid [not null, ref: > users.id]
-  created_at    timestamp
-}
-
-//////////////////////////////////////////////////////
-// VERIFICATION WORKFLOW
-//////////////////////////////////////////////////////
-
-Enum verification_status {
+Enum VerificationStatus {
   approved
   rejected
 }
 
-Table model_verifications {
-  id             serial [pk]
-  model_file_id  uuid [not null, ref: > model_files.id]
-  verifier_id    uuid [not null, ref: > users.id]
-  status         verification_status
-  comments       text
-  created_at     timestamp
-}
-
-//////////////////////////////////////////////////////
-// PRINT JOBS
-//////////////////////////////////////////////////////
-
-Enum print_status {
+Enum PrintStatus {
   queued
   printing
   completed
   failed
 }
 
+Table users {
+  id UUID [pk, default: `uuid_generate_v4()`]
+  username varchar(255) [unique, not null]
+}
+
+Table user_roles {
+  user_id UUID [pk, ref: > users.id]
+  role_id RoleEnum [pk]
+}
+
+Table model_files {
+  id UUID [pk, default: `uuid_generate_v4()`]
+  minio_path varchar(255) [not null]
+  filename varchar(255) [not null]
+  size bigint [not null]
+  uploader_id UUID [not null, ref: > users.id]
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+}
+
+Table model_verifications {
+  id int [pk, increment]
+  model_file_id UUID [not null, ref: > model_files.id]
+  verifier_id UUID [not null, ref: > users.id]
+  status VerificationStatus [not null]
+  comments text
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
+}
+
 Table print_jobs {
-  id               uuid [pk]
-  model_file_id    uuid [not null, ref: > model_files.id]
-  requested_by     uuid [not null, ref: > users.id]
-  status           print_status
-  started_at       timestamp
-  completed_at     timestamp
-  created_at       timestamp
+  id UUID [pk, default: `uuid_generate_v4()`]
+  model_file_id UUID [not null, ref: > model_files.id]
+  requested_by UUID [not null, ref: > users.id]
+  status PrintStatus [not null]
+  started_at timestamp
+  completed_at timestamp
+  created_at timestamp [default: `CURRENT_TIMESTAMP`]
 }
