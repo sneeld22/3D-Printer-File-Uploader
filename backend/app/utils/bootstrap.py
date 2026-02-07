@@ -6,10 +6,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def bootstrap_roles(db: Session, filename: str = "app/role_bootstrap.yaml"):
-    if db.query(user_repo.get_or_create_user.__annotations__['return']).count() > 0:
-        return
-
+def bootstrap_roles(db: Session, filename: str = "role_bootstrap.yaml"):
     try:
         with open(filename) as f:
             config = yaml.safe_load(f)
