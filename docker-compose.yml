@@ -7,38 +7,37 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - MINIO_ENDPOINT=${MINIO_ENDPOINT}
-      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
-      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
-      - MINIO_BUCKET=${MINIO_BUCKET}
-      - MINIO_SECURE=${MINIO_SECURE}
-      - ADMIN_USER=${ADMIN_USER}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
-      - JWT_SECRET=${JWT_SECRET}
-      - LDAP_SERVER=${LDAP_SERVER}
-      - LDAP_DOMAIN=${LDAP_DOMAIN}
-      - BASE_DN=${BASE_DN}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@db:5432/app}
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-minio:9000}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+      - MINIO_BUCKET=${MINIO_BUCKET:-my-bucket}
+      - MINIO_SECURE=${MINIO_SECURE:-false}
+      - ADMIN_USER=${ADMIN_USER:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+      - JWT_SECRET=${JWT_SECRET:-change-me}
+      - LDAP_SERVER=${LDAP_SERVER:-}
+      - LDAP_DOMAIN=${LDAP_DOMAIN:-}
+      - BASE_DN=${BASE_DN:-}
     depends_on:
       - db
       - minio
-  
+
   frontend: 
     image: ghcr.io/sneeld22/3d-printer-file-uploader/frontend:latest
     build:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-     - "3000:3000" 
-    
+      - "3000:3000"
 
   db:
     image: postgres:15
     restart: always
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER=${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB=${POSTGRES_DB:-app}
     volumes:
       - pgdata:/var/lib/postgresql/data
 
@@ -46,12 +45,12 @@ services:
     image: minio/minio
     command: ["server", "--console-address", ":9001", "/data"]
     environment:
-      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY}
-      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY}
-      - MINIO_DEFAULT_BUCKETS=${MINIO_BUCKET}
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY:-minioadmin}
+      - MINIO_DEFAULT_BUCKETS=${MINIO_BUCKET:-my-bucket}
     ports:
-     - "9000:9000"
-     - "9001:9001"
+      - "9000:9000"
+      - "9001:9001"
     volumes:
       - minio_data:/data
 
