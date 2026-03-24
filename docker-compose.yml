@@ -1,5 +1,6 @@
 services:
   backend:
+    image: ghcr.io/sneeld22/3d-printer-file-uploader/backend
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -23,10 +24,11 @@ services:
       - minio
   
   frontend: 
-   build:
+    image: ghcr.io/sneeld22/3d-printer-file-uploader/frontend
+    build:
       context: ./frontend
       dockerfile: Dockerfile
-   ports:
+    ports:
      - "3000:3000" 
     
 
