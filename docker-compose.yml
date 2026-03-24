@@ -1,6 +1,6 @@
 services:
   backend:
-    image: ghcr.io/sneeld22/3d-printer-file-uploader/backend
+    image: ghcr.io/sneeld22/3d-printer-file-uploader/backend:latest
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -24,7 +24,7 @@ services:
       - minio
   
   frontend: 
-    image: ghcr.io/sneeld22/3d-printer-file-uploader/frontend
+    image: ghcr.io/sneeld22/3d-printer-file-uploader/frontend:latest
     build:
       context: ./frontend
       dockerfile: Dockerfile
