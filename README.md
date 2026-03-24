@@ -4,53 +4,159 @@
 
 This project is a web-based portal designed for school students to upload 3D model files and send them automatically to a 3D printer for printing. It provides a streamlined, secure, and automated workflow to manage 3D printing requests within a school environment.
 
+---
+
 ## Features
 
-- User authentication via the school's LDAP server  
-- Role-based access control for uploaders and verifiers  
-- Upload and storage of 3D model files (e.g., STL format)  
-- Verification workflow before printing  
-- Printer queue management
-- Responsive frontend built with React and Material UI  
-- Backend API implemented using Python FastAPI  
-- Fully containerized with Docker for easy deployment  
+* User authentication via the school's LDAP server
+* Role-based access control for uploaders and verifiers
+* Upload and storage of 3D model files (e.g., STL format)
+* Verification workflow before printing
+* Printer queue management
+* Responsive frontend built with React and Material UI
+* Backend API implemented using Python FastAPI
+* Fully containerized with Docker and Docker Compose
+* Prebuilt images available via GitHub Container Registry (GHCR)
+
+---
 
 ## Technologies Used
 
-- **Frontend:** React, Material UI  
-- **Backend:** Python, FastAPI  
-- **Authentication:** LDAP integration for single sign-on  
-- **Deployment:** Docker containers for frontend, backend, and services  
+* **Frontend:** React, Material UI
+* **Backend:** Python, FastAPI
+* **Database:** PostgreSQL
+* **Object Storage:** MinIO
+* **Authentication:** LDAP integration
+* **Deployment:** Docker & Docker Compose
+
+---
 
 ## Getting Started
 
 ### Prerequisites
 
-- Docker installed on your system  
-- Access to the school’s LDAP server credentials  
+* Docker and Docker Compose installed
+* (Optional) Access to an LDAP server for authentication
 
-### Installation & Running
+---
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/your-org/3d-printer-file-uploader.git
-   cd 3d-printer-file-uploader
+## 🚀 Quick Start (Recommended)
 
-2. Build and start the containers:
-   ```bash
-   docker-compose up --build
+### 1. Clone the repository
 
-3. Open your browser and navigate to http://localhost:3000 (or the configured frontend port).
+```bash
+git clone https://github.com/sneeld22/3D-Printer-File-Uploader.git
+cd 3D-Printer-File-Uploader
+```
+
+---
+
+### 2. Create environment file
+
+Copy the example environment file:
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` if needed (or use defaults for local development).
+
+---
+
+### 3. Start the application
+
+```bash
+docker compose up -d
+```
+
+---
+
+### 4. Access the application
+
+* Frontend: http://localhost:3000
+* Backend API: http://localhost:8000
+* MinIO Console: http://localhost:9001
+
+---
+
+## ⚙️ Environment Variables
+
+All configuration is handled via a `.env` file.
+
+Example variables:
+
+```env
+# Database
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=app
+DATABASE_URL=postgresql://postgres:postgres@db:5432/app
+
+# MinIO
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin
+MINIO_BUCKET=my-bucket
+MINIO_ENDPOINT=minio:9000
+MINIO_SECURE=false
+
+# Auth
+JWT_SECRET=change-me
+
+# Admin
+ADMIN_USER=admin
+ADMIN_PASSWORD=admin
+
+# LDAP (optional)
+LDAP_SERVER=
+LDAP_DOMAIN=
+BASE_DN=
+```
+---
+
+## 🐳 Docker & Deployment
+
+This project uses prebuilt Docker images hosted on GitHub Container Registry (GHCR).
+
+When running:
+
+```bash
+docker compose up -d
+```
+
+Docker will automatically:
+
+* Pull the latest backend and frontend images
+* Start all required services (PostgreSQL, MinIO, etc.)
+* Inject environment variables from `.env`
+
+---
+
+## 🔄 Updating the Application
+
+To pull the latest version:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+---
 
 ## Usage
 
-- Log in using your school LDAP account.  
-- Upload 3D model files via the web interface.  
-- Users with verifier roles can review and approve uploaded files.  
-- Approved files enter the printer queue and are automatically sent to the 3D printer.  
-- Monitor the status of your print jobs directly in the portal.
+* Log in using your LDAP account (if configured)
+* Upload 3D model files via the web interface
+* Verifiers can review and approve uploaded files
+* Approved files are added to the printer queue
+* Monitor print job status directly in the portal
+
+---
 
 ## Project Structure
 
-- `/frontend` – React app with Material UI  
-- `/backend` – FastAPI backend handling API requests, file storage, and printer queue  
+```
+/frontend   → React frontend (Material UI)
+/backend    → FastAPI backend
+docker-compose.yml → Service orchestration
+.env.example → Environment variable template
+```
