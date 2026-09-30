@@ -21,7 +21,7 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     <React.StrictMode>
         <ThemeProvider theme={theme}>
             <CssBaseline />
-            <BrowserRouter>
+            <BrowserRouter basename={import.meta.env.BASE_URL}>
                 <AuthProvider>
                     <App />
                 </AuthProvider>

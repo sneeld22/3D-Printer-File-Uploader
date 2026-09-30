@@ -1,7 +1,8 @@
 import { useState } from "react";
+import type { FormEvent } from "react";
 import { Box, Button, TextField, Typography, Paper, Stack } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../auth/AuthContext";
+import { useAuth } from "../auth/useAuth";
 
 const LoginPage = () => {
     const navigate = useNavigate();
@@ -11,13 +12,15 @@ const LoginPage = () => {
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
 
-    const handleLogin = async (e: any) => {
+    const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         try {
             setError("");
-            await login(username, password);
-            navigate("/upload");
-        } catch (err) {
+            const user = await login(username, password);
+            const verifierOnly = user.roles.includes("verifier") &&
+                !user.roles.includes("uploader") && !user.roles.includes("admin");
+            navigate(verifierOnly ? "/verify" : "/upload");
+        } catch {
             setError("Invalid username or password");
         }
     };

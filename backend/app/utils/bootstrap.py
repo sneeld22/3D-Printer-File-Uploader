@@ -1,25 +1,22 @@
-import yaml
 from sqlalchemy.orm import Session
 from app.repos.user_repo import user_repo
 from app.db.models import RoleEnum
+from app.core.config import settings
 import logging
 
 logger = logging.getLogger(__name__)
 
-def bootstrap_roles(db: Session, filename: str = "role_bootstrap.yaml"):
-    try:
-        with open(filename) as f:
-            config = yaml.safe_load(f)
-    except IOError:
-        logger.error(
-            "Failed to open role file"
-        )
-        return
+def bootstrap_roles(db: Session):
+    role_users = {
+        RoleEnum.admin: [settings.ADMIN_USER],
+        RoleEnum.verifier: settings.VERIFIER_USERS.split(","),
+    }
 
-    for role_name, usernames in config.items():
-        role = RoleEnum[role_name]
-        if not role:
-            continue
+    for role, usernames in role_users.items():
         for username in usernames:
+            username = username.strip()
+            if not username:
+                continue
             user = user_repo.get_or_create_user(db, username)
             user_repo.add_role(db, user.id, role)
+            logger.info("Assigned configured role", extra={"username": username, "role": role.value})

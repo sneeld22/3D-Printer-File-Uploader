@@ -14,6 +14,7 @@ import {
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
+import axios from "axios";
 import { uploadModelFile } from "../../services/fileService.ts";
 import type { UploadedFileResponse } from "../../services/fileService.ts";
 
@@ -24,6 +25,9 @@ const getFileExtension = (file: File) =>
     file.name.split(".").pop()?.toLowerCase() || "";
 
 const validateFile = (file: File): string | null => {
+    if (file.size === 0) {
+        return "The file is empty.";
+    }
     const ext = getFileExtension(file);
     if (!ALLOWED_EXTENSIONS.includes(ext)) {
         return `Invalid file type. Allowed: ${ALLOWED_EXTENSIONS.join(", ")}`;
@@ -103,24 +107,10 @@ const FileUpload = () => {
             setUploadResult(result);
         } catch (err: unknown) {
             console.error(err);
-
-            if (
-                err &&
-                typeof err === "object" &&
-                "response" in err &&
-                err.response &&
-                typeof err.response === "object" &&
-                "data" in err.response &&
-                err.response.data &&
-                typeof err.response.data === "object" &&
-                "message" in err.response.data
-            ) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const message = (err as any).response.data.message as string;
-                setError(message);
-            } else {
-                setError("Upload failed. Please try again or contact the admin.");
-            }
+            const detail = axios.isAxiosError<{ detail?: string }>(err)
+                ? err.response?.data?.detail
+                : undefined;
+            setError(detail || "Upload failed. Please try again or contact the admin.");
         } finally {
 
             setIsUploading(false);

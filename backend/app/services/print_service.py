@@ -2,8 +2,9 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from uuid import UUID
 
-from app.db.models import PrintJob
+from app.db.models import ModelFile, PrintJob, VerificationStatus
 from app.repos.print_job_repo import print_job_repo
+from app.repos.verification_repo import verification_repo
 
 import logging
 
@@ -15,6 +16,22 @@ class PrintService:
         self.repo = repo
 
     def enqueue_print(self, db: Session, model_file_id: UUID, user_id: UUID) -> PrintJob:
+        # Lock the file so concurrent requests cannot create duplicate active jobs.
+        model_file = (
+            db.query(ModelFile)
+            .filter(ModelFile.id == model_file_id)
+            .with_for_update()
+            .first()
+        )
+        if not model_file:
+            raise HTTPException(404, "File not found")
+
+        latest_verification = verification_repo.get_latest(db, model_file_id)
+        if not latest_verification or latest_verification.status != VerificationStatus.approved:
+            raise HTTPException(400, "File must be approved before it can be queued")
+        if self.repo.has_active_job(db, model_file_id):
+            raise HTTPException(409, "File already has an active print job")
+
         logger.info(
             "Enqueuing print job",
             extra={
@@ -22,7 +39,13 @@ class PrintService:
                 "user_id": str(user_id),
             },
         )
-        job =  self.repo.create(db, model_file_id, user_id)
+        try:
+            job = self.repo.create(db, model_file_id, user_id)
+            db.commit()
+            db.refresh(job)
+        except Exception:
+            db.rollback()
+            raise
 
         logger.info(
             "Print job enqueued",

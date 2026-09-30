@@ -3,8 +3,7 @@ from minio.error import S3Error
 from fastapi import HTTPException
 from app.core.config import settings
 import uuid
-from io import BytesIO
-from io import BytesIO
+from typing import BinaryIO
 
 import logging
 
@@ -21,7 +20,7 @@ class MinioService:
         )
         self.bucket_name = settings.MINIO_BUCKET
 
-        # Ensure bucket exists
+    def ensure_bucket(self):
         if not self.client.bucket_exists(bucket_name=self.bucket_name):
             logger.info("MinIO bucket not found, creating bucket", extra={
                     "bucket": self.bucket_name
@@ -39,7 +38,7 @@ class MinioService:
         return object_name
 
 
-    def upload(self, file_obj: bytes, object_name: str, length: int):
+    def upload(self, file_obj: BinaryIO, object_name: str, length: int):
 
         logger.info(
         "Uploading object to MinIO",
@@ -51,11 +50,10 @@ class MinioService:
         )
 
         try:
-            data_stream = BytesIO(file_obj)  # wrap bytes in BytesIO to provide .read()
             self.client.put_object(
                 bucket_name=self.bucket_name,
                 object_name=object_name,
-                data=data_stream,
+                data=file_obj,
                 length=length,
                 part_size=10 * 1024 * 1024,
             )
@@ -65,14 +63,14 @@ class MinioService:
                 extra={"object_name": object_name},
             )
 
-        except S3Error as e:
+        except S3Error:
             logger.exception(
                 "MinIO upload failed",
                 extra={"object_name": object_name},
             )
             raise HTTPException(
                 status_code=500,
-                detail=f"MinIO upload error: {str(e)}"
+                detail="Object storage upload failed"
             )
         
     def list_objects(self) -> list[dict]:
@@ -101,7 +99,7 @@ class MinioService:
                 "size": obj.size,
                 "last_modified": obj.last_modified.isoformat() if obj.last_modified else None,
             }
-        except S3Error as e:
+        except S3Error:
             logger.warning(
                 "MinIO object not found",
                 extra={"object_name": object_name},
@@ -115,23 +113,25 @@ class MinioService:
             response = self.client.get_object(self.bucket_name, object_name)
 
             def file_iterator():
-                for chunk in response.stream(32 * 1024):  # 32 KB chunks
-                    yield chunk
-                response.close()
-                response.release_conn()
-                logger.debug(
-                    "MinIO stream closed",
-                    extra={"object_name": object_name},
-                )
+                try:
+                    for chunk in response.stream(32 * 1024):  # 32 KB chunks
+                        yield chunk
+                finally:
+                    response.close()
+                    response.release_conn()
+                    logger.debug(
+                        "MinIO stream closed",
+                        extra={"object_name": object_name},
+                    )
 
 
             return file_iterator
 
-        except S3Error as e:
+        except S3Error:
             logger.exception(
                 "Failed to stream MinIO object",
                 extra={"object_name": object_name},
             )
-            raise HTTPException(status_code=404, detail=f"File not found: {str(e)}")
+            raise HTTPException(status_code=404, detail="File not found")
     
 minio_service = MinioService()

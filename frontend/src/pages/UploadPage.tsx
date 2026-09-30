@@ -10,7 +10,7 @@ const UploadPage = () => {
             </Typography>
             <Typography variant="body1" sx={{ mb: 3 }}>
                 Upload your 3D model file. After upload, it must be verified before it
-                is sent to the printer.
+                is added to the print queue. Printing is handled separately.
             </Typography>
 
             <FileUpload />

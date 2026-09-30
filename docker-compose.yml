@@ -1,59 +1,108 @@
 services:
   backend:
     image: ghcr.io/sneeld22/3d-printer-file-uploader/backend:latest
+    restart: unless-stopped
     build:
       context: ./backend
       dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]
+    networks:
+      - default
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik_proxy"
+      - "traefik.http.routers.print-api.rule=Host(`sc.htl-kaindorf.at`) && (PathPrefix(`/3DPrint/api/`) || Path(`/3DPrint/docs`) || Path(`/3DPrint/redoc`) || Path(`/3DPrint/openapi.json`))"
+      - "traefik.http.routers.print-api.entrypoints=websecure"
+      - "traefik.http.routers.print-api.tls=true"
+      - "traefik.http.routers.print-api.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.print-api.priority=100"
+      - "traefik.http.routers.print-api.middlewares=print-api-strip,print-api-body-limit"
+      - "traefik.http.routers.print-api.service=print-api"
+      - "traefik.http.middlewares.print-api-strip.stripprefix.prefixes=/3DPrint"
+      - "traefik.http.middlewares.print-api-body-limit.buffering.maxRequestBodyBytes=57671680"
+      - "traefik.http.services.print-api.loadbalancer.server.port=8000"
     environment:
-      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@db:5432/app}
+      - DATABASE_URL=${DATABASE_URL:?Set DATABASE_URL in .env}
       - MINIO_ENDPOINT=${MINIO_ENDPOINT:-minio:9000}
-      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
-      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:?Set MINIO_ACCESS_KEY in .env}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:?Set MINIO_SECRET_KEY in .env}
       - MINIO_BUCKET=${MINIO_BUCKET:-my-bucket}
       - MINIO_SECURE=${MINIO_SECURE:-false}
-      - ADMIN_USER=${ADMIN_USER:-admin}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
-      - JWT_SECRET=${JWT_SECRET:-change-me}
-      - LDAP_SERVER=${LDAP_SERVER:-}
-      - LDAP_DOMAIN=${LDAP_DOMAIN:-}
+      - ADMIN_USER=${ADMIN_USER:?Set ADMIN_USER to an LDAP username in .env}
+      - VERIFIER_USERS=${VERIFIER_USERS:-}
+      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in .env}
+      - ROOT_PATH=/3DPrint
+      - LDAP_SERVER=${LDAP_SERVER:?Set LDAP_SERVER in .env}
+      - LDAP_DOMAIN=${LDAP_DOMAIN:?Set LDAP_DOMAIN in .env}
       - BASE_DN=${BASE_DN:-}
     depends_on:
-      - db
-      - minio
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_started
 
   frontend:
     image: ghcr.io/sneeld22/3d-printer-file-uploader/frontend:latest
+    restart: unless-stopped
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik_proxy"
+      - "traefik.http.routers.print-ui.rule=Host(`sc.htl-kaindorf.at`) && PathPrefix(`/3DPrint/`)"
+      - "traefik.http.routers.print-ui.entrypoints=websecure"
+      - "traefik.http.routers.print-ui.tls=true"
+      - "traefik.http.routers.print-ui.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.print-ui.priority=10"
+      - "traefik.http.routers.print-ui.middlewares=print-ui-strip"
+      - "traefik.http.routers.print-ui.service=print-ui"
+      - "traefik.http.middlewares.print-ui-strip.stripprefix.prefixes=/3DPrint"
+      - "traefik.http.services.print-ui.loadbalancer.server.port=3000"
+      - "traefik.http.routers.print-root.rule=Host(`sc.htl-kaindorf.at`) && Path(`/3DPrint`)"
+      - "traefik.http.routers.print-root.entrypoints=websecure"
+      - "traefik.http.routers.print-root.tls=true"
+      - "traefik.http.routers.print-root.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.print-root.middlewares=print-trailing-slash"
+      - "traefik.http.routers.print-root.service=print-ui"
+      - 'traefik.http.middlewares.print-trailing-slash.redirectregex.regex=^https?://[^/]+/3DPrint'
+      - 'traefik.http.middlewares.print-trailing-slash.redirectregex.replacement=https://sc.htl-kaindorf.at/3DPrint/'
+      - "traefik.http.middlewares.print-trailing-slash.redirectregex.permanent=true"
 
   db:
     image: postgres:15
     restart: always
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       - POSTGRES_DB=${POSTGRES_DB:-app}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-app}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   minio:
     image: minio/minio
+    restart: unless-stopped
     command: ["server", "--console-address", ":9001", "/data"]
     environment:
-      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY:-minioadmin}
-      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY:-minioadmin}
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY:?Set MINIO_ACCESS_KEY in .env}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY:?Set MINIO_SECRET_KEY in .env}
       - MINIO_DEFAULT_BUCKETS=${MINIO_BUCKET:-my-bucket}
-    ports:
-      - "9000:9000"
-      - "9001:9001"
     volumes:
       - minio_data:/data
 
 volumes:
   pgdata:
   minio_data:
+
+networks:
+  proxy:
+    external: true
+    name: traefik_proxy

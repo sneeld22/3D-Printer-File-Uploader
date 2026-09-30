@@ -46,7 +46,7 @@ export default function PrinterPage() {
             Printer Queue
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Files waiting to be printed
+            Approved files in the queue. No printer worker is connected.
           </Typography>
         </Box>
 

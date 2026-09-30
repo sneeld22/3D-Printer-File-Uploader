@@ -14,7 +14,7 @@ router = APIRouter()
 def enqueue_print(
     payload: PrintJobCreate,
     db: Session = Depends(get_db),
-    user: User = Depends(require_role([RoleEnum.uploader, RoleEnum.admin])),
+    user: User = Depends(require_role([RoleEnum.admin])),
 ):
     return print_service.enqueue_print(db, payload.model_file_id, user.id)
 

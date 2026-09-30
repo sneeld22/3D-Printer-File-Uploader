@@ -7,9 +7,6 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.db.base import Base
-from passlib.context import CryptContext
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # ------------------------------
 # ENUMS
@@ -67,7 +64,7 @@ class ModelFile(Base):
     filename = Column(String(255), nullable=False)
     size = Column(BigInteger, nullable=False)
     uploader_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    created_at = Column(TIMESTAMP, default=datetime.utcnow())
+    created_at = Column(TIMESTAMP, default=datetime.utcnow)
     
     uploader = relationship("User", back_populates="uploaded_files")
     verifications = relationship("ModelVerification", back_populates="model_file", cascade="all, delete-orphan")
@@ -101,7 +98,7 @@ class ModelVerification(Base):
     verifier_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     status = Column(Enum(VerificationStatus), nullable=False)
     comments = Column(Text)
-    created_at = Column(TIMESTAMP, default=datetime.utcnow())
+    created_at = Column(TIMESTAMP, default=datetime.utcnow)
 
     model_file = relationship("ModelFile", back_populates="verifications")
     verifier = relationship("User", back_populates="verifications")
@@ -119,7 +116,7 @@ class PrintJob(Base):
     status = Column(Enum(PrintStatus), nullable=False)
     started_at = Column(TIMESTAMP, nullable=True)
     completed_at = Column(TIMESTAMP, nullable=True)
-    created_at = Column(TIMESTAMP, default=datetime.utcnow())
+    created_at = Column(TIMESTAMP, default=datetime.utcnow)
 
     model_file = relationship("ModelFile", back_populates="print_jobs")
     requester = relationship("User", back_populates="print_jobs")

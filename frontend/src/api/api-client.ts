@@ -1,7 +1,9 @@
 import axios from "axios";
 
 const apiClient = axios.create({
-    baseURL: "http://localhost:8000/api/v1",
+    baseURL: import.meta.env.DEV
+        ? "http://localhost:8000/api/v1"
+        : `${import.meta.env.BASE_URL}api/v1`,
 });
 
 // Add token from localStorage to every request

@@ -11,12 +11,13 @@ import LoginPage from "./pages/LoginPage";
 import UploadPage from "./pages/UploadPage";
 import VerificationPage from "./pages/VerificationPage";
 import PrinterPage from "./pages/PrinterPage";
-import { useAuth } from "./auth/AuthContext";
+import { useAuth } from "./auth/useAuth";
+import type { User } from "./auth/auth-context";
 import type { ReactNode } from "react";
 import AllFilesPage from "./pages/AllFilesPage";
 
 // Helper: check if user has any role in allowedRoles
-const hasRole = (user: any, allowedRoles: string[]) =>
+const hasRole = (user: User | null, allowedRoles: string[]) =>
     user?.roles?.some((r: string) => allowedRoles.includes(r));
 
 interface RequireAuthProps {
@@ -64,8 +65,8 @@ const App = () => {
                             3D Print Portal
                         </Typography>
 
-                        {/* Upload: users with uploader/verifier/admin roles */}
-                        {hasRole(user, ["uploader", "verifier", "admin"]) && (
+                        {/* Upload: uploader/admin */}
+                        {hasRole(user, ["uploader", "admin"]) && (
                             <Button color="inherit" component={Link} to="/upload">
                                 Upload
                             </Button>
@@ -110,11 +111,11 @@ const App = () => {
                     <Route path="/" element={<Navigate to="/login" replace />} />
                     <Route path="/login" element={<LoginPage />} />
 
-                    {/* Upload: uploader + verifier + admin */}
+                    {/* Upload: uploader/admin */}
                     <Route
                         path="/upload"
                         element={
-                            <RequireAuth allowedRoles={["uploader", "verifier", "admin"]}>
+                            <RequireAuth allowedRoles={["uploader", "admin"]}>
                                 <UploadPage />
                             </RequireAuth>
                         }

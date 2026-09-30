@@ -65,17 +65,10 @@ const PendingFilesTable: FC<PendingFilesTableProps> = ({
                             >
                                 <TableCell>{file.filename}</TableCell>
                                 <TableCell>
-                                    {/* assumes createdAt is an ISO string; adjust if needed */}
-                                    {"createdAt" in file
-                                        ? new Date(
-                                            (file as any).createdAt as string
-                                        ).toLocaleString()
-                                        : "–"}
+                                    {new Date(file.created_at).toLocaleString()}
                                 </TableCell>
                                 <TableCell>
-                                    {"ownerName" in file
-                                        ? ((file as any).ownerName as string)
-                                        : "–"}
+                                    {file.user_id}
                                 </TableCell>
                             </TableRow>
                         ))}

@@ -10,7 +10,7 @@
 
 Der 3D-Druck spielt im schulischen Umfeld eine immer größere Rolle, insbesondere in technischen und kreativen Fächern. Dabei entstehen häufig organisatorische Probleme, da 3D-Modelle manuell abgegeben, geprüft und gedruckt werden müssen. Dies führt zu Unübersichtlichkeit, Fehlern und erhöhtem Aufwand für Lehrkräfte und Schüler.
 
-Ziel dieses Projekts war es, ein zentrales Web-Portal zu entwickeln, über das Schüler ihre 3D-Modelle hochladen können. Diese sollen anschließend überprüft, verwaltet und automatisiert an einen 3D-Drucker weitergeleitet werden.
+Ziel dieses Projekts war es, ein zentrales Web-Portal zu entwickeln, über das Schüler ihre 3D-Modelle hochladen können. Die Modelle werden überprüft; freigegebene Dateien landen in einer Warteschlange. Ein Drucker-Worker und die Anbindung an einen physischen Drucker sind nicht enthalten.
 
 ---
 
@@ -37,7 +37,7 @@ Der typische Ablauf eines Druckauftrags ist:
 2. Upload eines 3D-Modells (z. B. STL-Datei)
 3. Verifikation durch berechtigte Nutzer
 4. Einreihung in die Printer Queue
-5. Automatischer Druck
+5. Druck durch einen separaten Prozess (hier nicht implementiert)
 
 ---
 
@@ -108,14 +108,15 @@ Das Frontend kommuniziert über HTTP mit dem Backend. Das Backend greift auf die
 
 ## 7. Docker-Setup
 
-Das Projekt wird über Docker Compose orchestriert. Dabei werden alle benötigten Services gemeinsam gestartet.
+Die Anwendung wird über Docker Compose orchestriert. Im Produktivbetrieb stellt ein separater Traefik-Stack den gemeinsamen HTTPS-Zugang bereit.
 
 ### Verwendete Services
 
-* **Backend:** FastAPI-Anwendung auf Port 8000
-* **Frontend:** React-Anwendung auf Port 3000
+* **Backend:** FastAPI-Anwendung auf internem Port 8000
+* **Frontend:** React-Anwendung auf internem Port 3000
 * **Datenbank:** PostgreSQL 15
-* **Objektspeicher:** MinIO (Ports 9000 und 9001)
+* **Objektspeicher:** MinIO auf den internen Ports 9000 und 9001
+* **Reverse Proxy:** Traefik auf den öffentlichen Ports 80 und 443
 
 Persistente Daten werden über Docker Volumes gespeichert.
 
@@ -180,15 +181,7 @@ Alle eingehenden API-Anfragen werden serverseitig mitgeloggt und in eine Logdate
 
 ## 11. Tests
 
-Getestet wurden:
-
-* Benutzeranmeldung
-* Datei-Upload
-* Rollen- und Rechteprüfung
-* Printer Queue Ablauf
-* Docker-Setup
-
-Das System funktioniert stabil im lokalen Docker-Setup.
+Automatisierte Prüfungen decken Rollenzuweisung, Upload-Beschränkungen, Dateizugriffsrechte und die Konsistenz zwischen Freigabe und Warteschlange ab. Frontend-Lint und Produktions-Build sind erfolgreich; die Compose-Dateien werden erfolgreich validiert. Ein Live-Test mit dem LDAP-Server der Schule, PostgreSQL, MinIO und Traefik ist auf dem Zielserver noch erforderlich.
 
 ---
 
@@ -199,7 +192,7 @@ Das System funktioniert stabil im lokalen Docker-Setup.
 * Verwaltung der Druck-Warteschlange
 * Docker-Netzwerk und Umgebungsvariablen
 
-Alle Probleme konnten durch Recherche und iterative Entwicklung gelöst werden.
+Die verbleibenden Bereitstellungsprüfungen benötigen die Zielinfrastruktur.
 
 ---
 
@@ -219,7 +212,7 @@ Mögliche Erweiterungen:
 
 ## 14. API-Dokumentation
 
-Die API ist als REST-API mit FastAPI umgesetzt und unter dem Basis-Pfad `/api/v1` erreichbar. Die Authentifizierung erfolgt über JWT-Tokens, die nach erfolgreichem Login im Authorization-Header (`Bearer Token`) mitgesendet werden müssen.
+Die API ist als REST-API mit FastAPI umgesetzt. Ihr interner Basis-Pfad ist `/api/v1`; über Traefik ist sie unter `https://sc.htl-kaindorf.at/3DPrint/api/v1` erreichbar. Die Authentifizierung erfolgt über JWT-Tokens, die nach erfolgreichem Login im Authorization-Header (`Bearer Token`) mitgesendet werden müssen.
 
 ---
 
@@ -262,7 +255,7 @@ Gibt Informationen über den aktuell eingeloggten Benutzer zurück.
 #### POST `/api/v1/files/upload`
 
 **Beschreibung:**
-Upload einer 3D-Modell-Datei (z. B. STL). Die Datei wird im Objektspeicher gespeichert und Metadaten in der Datenbank abgelegt.
+Upload einer `.stl`- oder `.3mf`-Datei bis 50 MiB. Die Datei wird im Objektspeicher gespeichert und Metadaten werden in der Datenbank abgelegt.
 
 **Rollen:** `uploader`, `admin`
 
@@ -274,7 +267,7 @@ Upload einer 3D-Modell-Datei (z. B. STL). Die Datei wird im Objektspeicher gespe
 
 * Datei-ID
 * Dateiname
-* Upload-Zeitpunkt
+* Erfolgsmeldung
 
 ---
 
@@ -328,6 +321,8 @@ Listet alle Dateien eines bestimmten Benutzers.
 **Beschreibung:**
 Gibt Metadaten einer einzelnen Datei zurück.
 
+**Zugriff:** Dateieigentümer, `admin`, `verifier` oder `downloader`
+
 **Parameter:**
 
 * `file_id` (UUID)
@@ -338,6 +333,8 @@ Gibt Metadaten einer einzelnen Datei zurück.
 
 **Beschreibung:**
 Download der Originaldatei aus dem Objektspeicher.
+
+**Zugriff:** Dateieigentümer, `admin`, `verifier` oder `downloader`
 
 **Parameter:**
 
@@ -359,15 +356,15 @@ Löscht eine Datei inklusive Metadaten und gespeicherter Datei.
 #### POST `/api/v1/verifications`
 
 **Beschreibung:**
-Verifiziert oder lehnt eine hochgeladene Datei ab. Nach erfolgreicher Verifikation kann die Datei in die Druck-Warteschlange übernommen werden.
+Gibt eine hochgeladene Datei frei oder lehnt sie ab. Die Freigabe erzeugt einen Auftrag in der Warteschlange; ein physischer Druck wird nicht gestartet.
 
-**Rollen:** `uploader`, `admin`
+**Rollen:** `verifier`, `admin`
 
 **Request Body:**
 
 * `file_id` (UUID)
-* `approved` (boolean)
-* `comment` (optional)
+* `status` (`approved` oder `rejected`)
+* `comments` (optional)
 
 ---
 
@@ -376,9 +373,9 @@ Verifiziert oder lehnt eine hochgeladene Datei ab. Nach erfolgreicher Verifikati
 #### POST `/api/v1/prints`
 
 **Beschreibung:**
-Erstellt einen neuen Druckauftrag und fügt ihn der Printer Queue hinzu.
+Erstellt einen Auftrag in der Warteschlange für eine bereits freigegebene Datei ohne aktiven Auftrag.
 
-**Rollen:** `uploader`, `admin`
+**Rollen:** `admin`
 
 **Request Body:**
 
@@ -425,10 +422,10 @@ DATABASE_URL\
 Verbindungs-URL zur PostgreSQL-Datenbank. Sie enthält Benutzername, Passwort, Host, Port und Datenbankname und wird vom Backend für den Datenbankzugriff verwendet.
 
 ADMIN_USER\
-Benutzername des initialen Administrators, der beim ersten Start des Systems automatisch angelegt wird.
+Bestehender LDAP-Benutzername, der beim Start die Administratorrolle erhält. Für die Anmeldung ist weiterhin dessen LDAP-Passwort nötig.
 
-ADMIN_PASSWORD\
-Passwort für den Administrator-Benutzer.
+VERIFIER_USERS\
+Optionale, durch Kommas getrennte Liste bestehender LDAP-Benutzernamen, die die Prüferrolle erhalten.
 
 JWT_SECRET\
 Geheimschlüssel zur Signierung und Validierung der JSON Web Tokens (JWT). Dieser Schlüssel stellt sicher, dass Authentifizierungs-Tokens nicht manipuliert werden können.
@@ -442,7 +439,7 @@ LDAP_DOMAIN\
 Domäne der Schule, die für den Login mit Schulaccounts verwendet wird.
 
 BASE_DN\
-Base Distinguished Name des LDAP-Verzeichnisses. Er definiert den Suchbereich, in dem Benutzerkonten gefunden werden.
+Optionale LDAP-Einstellung für Kompatibilität; die aktuelle Anmeldung verwendet sie nicht.
 
 ## 15.4 MinIO-Konfiguration (Dateispeicher)
 
@@ -462,31 +459,20 @@ MINIO_SECURE\
 Gibt an, ob die Verbindung zu MinIO verschlüsselt (HTTPS) oder unverschlüsselt (HTTP) erfolgt. Im Entwicklungsbetrieb ist dies häufig auf False gesetzt.
 
 
-# 16. Rollen-Bootstrap-Konfiguration (backend/role_bootstrap.yaml)
+# 16. Rollen-Bootstrap-Konfiguration
 
-Zur Initialisierung des Systems wird eine Konfigurationsdatei mit dem Namen role_bootstrap.yaml verwendet. Diese Datei definiert, welche Benutzer beim ersten Start des Backends automatisch bestimmte Rollen erhalten.
-
-## 16.1 Aufbau der Datei
-
-Die Datei ist im YAML-Format aufgebaut. Jede Rolle wird als Schlüssel definiert und enthält eine Liste von Benutzernamen, denen diese Rolle zugewiesen wird.
-
-Beispiel:
-
-```
-admin:
-  - user1
-  - user2
-```
+`ADMIN_USER` enthält einen bestehenden LDAP-Benutzernamen. `VERIFIER_USERS` kann weitere, durch Kommas getrennte LDAP-Benutzernamen enthalten. Das Backend weist diese Rollen beim Start zu. Es legt keine lokalen Passwörter an und verwendet `backend/role_bootstrap.yaml` nicht.
 
 
 
 
 # 17. Docker-Setup – Entwicklungs- und Produktivumgebung
 
-Für das Projekt werden **zwei Docker-Compose-Dateien** verwendet:
+Für das Projekt werden **drei Docker-Compose-Dateien** verwendet:
 
 * `docker-compose.yml` → **Produktiv-/Standardbetrieb**
 * `docker-compose.dev.yml` → **Entwicklungsbetrieb mit Hot Reload**
+* `docker-compose.traefik.yml` → **Gemeinsamer HTTPS-Reverse-Proxy**
 
 Diese Trennung ermöglicht eine stabile Produktionsumgebung sowie eine komfortable Entwicklungsumgebung, in der Änderungen am Code automatisch übernommen werden.
 
@@ -494,13 +480,13 @@ Diese Trennung ermöglicht eine stabile Produktionsumgebung sowie eine komfortab
 
 ## 17.1 Docker Compose – Produktivbetrieb (`docker-compose.yml`)
 
-Die Datei `docker-compose.yml` definiert die komplette Systemarchitektur für den regulären Betrieb der Anwendung.
+Die Datei `docker-compose.yml` definiert die Anwendungsdienste. Sie sind mit dem externen Netzwerk `traefik_proxy` verbunden; die Schritte zur Bereitstellung stehen in `README.md`.
 
 ### Backend
 
 * FastAPI-Anwendung
 * Build über ein Multi-Stage Dockerfile
-* API erreichbar über Port **8000**
+* Interner Port **8000**; öffentliche API unter `/3DPrint/api/v1`
 * Konfiguration über Umgebungsvariablen aus der `.env` Datei
 * Abhängigkeiten:
 
@@ -516,7 +502,7 @@ In dieser Variante wird **kein Hot Reload** verwendet, da sie für Stabilität u
 * React-Anwendung mit Vite
 * Build-Prozess erzeugt statische Dateien
 * Auslieferung über **Nginx**
-* Erreichbar über Port **3000**
+* Interner Port **3000**; öffentliches Frontend unter `/3DPrint/`
 
 Diese Variante eignet sich für den Produktivbetrieb, da kein Entwicklungsserver läuft.
 
@@ -533,7 +519,7 @@ Diese Variante eignet sich für den Produktivbetrieb, da kein Entwicklungsserver
 ### MinIO (Objektspeicher)
 
 * S3-kompatibler Objektspeicher für 3D-Modelldateien
-* Ports:
+* Interne Ports (im Produktivbetrieb nicht auf dem Host veröffentlicht):
 
   * `9000` → API-Zugriff
   * `9001` → Web-Konsole
@@ -581,7 +567,7 @@ Dies ermöglicht eine schnelle Entwicklung ohne manuelles Neustarten.
 
 ### Gemeinsame Services
 
-PostgreSQL und MinIO sind in beiden Docker-Compose-Dateien identisch definiert, um Entwicklungs- und Produktionsumgebung möglichst konsistent zu halten.
+PostgreSQL und MinIO verwenden in beiden Umgebungen dieselben Images und persistenten Volumes. Nur die Entwicklungsumgebung veröffentlicht die MinIO-Ports auf dem Host.
 
 ---
 

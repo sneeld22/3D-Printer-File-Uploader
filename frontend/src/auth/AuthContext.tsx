@@ -1,61 +1,46 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import apiClient from "../api/api-client";
+import { AuthContext } from "./auth-context";
+import type { User } from "./auth-context";
 
-interface User {
-    id: string;
-    username: string;
-}
-
-interface AuthContextValue {
-    user: User | null;
-    token: string | null;
-    login: (username: string, password: string) => Promise<void>;
-    logout: () => void;
-    isAuthenticated: boolean;
-    loading: boolean,
-}
-
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+const getCurrentUser = async (): Promise<User> => {
+    const response = await apiClient.get<User>("/auth/me");
+    return response.data;
+};
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
-    const [token, setToken] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [initialToken] = useState(() => localStorage.getItem("token"));
+    const [token, setToken] = useState<string | null>(initialToken);
+    const [loading, setLoading] = useState(Boolean(initialToken));
 
-    // Load token on startup
-    useEffect(() => {
-        const storedToken = localStorage.getItem("token");
-        if (storedToken) {
-            setToken(storedToken);
-            fetchCurrentUser().finally(() => setLoading(false));
-        } else {
-            setLoading(false);
-        }
+    const logout = useCallback(() => {
+        localStorage.removeItem("token");
+        setToken(null);
+        setUser(null);
     }, []);
 
-    const fetchCurrentUser = async () => {
-        try {
-            const res = await apiClient.get("/auth/me");
-            setUser(res.data);
-        } catch {
-            logout();
+    useEffect(() => {
+        if (initialToken) {
+            void getCurrentUser().then(setUser).catch(logout).finally(() => setLoading(false));
         }
-    };
+    }, [initialToken, logout]);
 
-    const login = async (username: string, password: string) => {
+    const login = async (username: string, password: string): Promise<User> => {
         const res = await apiClient.post("/auth/login", { username, password });
 
         const accessToken = res.data.access_token;
         localStorage.setItem("token", accessToken);
         setToken(accessToken);
 
-        await fetchCurrentUser();
-    };
-
-    const logout = () => {
-        localStorage.removeItem("token");
-        setToken(null);
-        setUser(null);
+        try {
+            const currentUser = await getCurrentUser();
+            setUser(currentUser);
+            return currentUser;
+        } catch (error) {
+            logout();
+            throw error;
+        }
     };
 
     return (
@@ -72,10 +57,4 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             {children}
         </AuthContext.Provider>
     );
-};
-
-export const useAuth = () => {
-    const ctx = useContext(AuthContext);
-    if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
-    return ctx;
 };

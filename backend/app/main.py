@@ -11,6 +11,7 @@ from app.db.session import engine, SessionLocal
 from app.db.models import User, UserRole, RoleEnum
 from app.core.config import settings
 from app.utils.bootstrap import bootstrap_roles
+from app.services.minio_service import minio_service
 import uuid
 
 def add_users():
@@ -22,9 +23,10 @@ def add_users():
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
+minio_service.ensure_bucket()
 add_users()
 
-app = FastAPI(title="3D Print Portal", version="1.0.0")
+app = FastAPI(title="3D Print Portal", version="1.0.0", root_path=settings.ROOT_PATH)
 
 # Add CORS middleware
 origins = [

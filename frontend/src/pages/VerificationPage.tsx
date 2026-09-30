@@ -144,7 +144,7 @@ const VerificationPage: FC = () => {
                                         width: 700
                                     }}
                                 >
-                                    <File3dPreview fileId={selectedFile?.id ?? null} />
+                                    <File3dPreview fileId={selectedFile.id} filename={selectedFile.filename} />
                                 </Box>
 
                                 <Box

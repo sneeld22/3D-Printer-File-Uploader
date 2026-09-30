@@ -3,20 +3,35 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from app.services.file_service import file_service
 from app.schemas.files import FileUploadResponse, FileMetadataResponse
-from app.dependencies import get_db, require_role
+from app.dependencies import get_db, get_current_user, require_role
 from app.db.models import User, RoleEnum
+from app.utils.upload_validation import MAX_FILE_SIZE, normalize_upload_filename
+from os import SEEK_END
+from urllib.parse import quote
 from uuid import UUID
 
 router = APIRouter()
 
 @router.post("/upload", response_model=FileUploadResponse, status_code=status.HTTP_201_CREATED)
-async def upload_file(
+def upload_file(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     user: User = Depends(require_role([RoleEnum.uploader, RoleEnum.admin])),
 ):
-    file_bytes = await file.read()
-    response = file_service.upload_file(db, file_bytes, file.filename, user.id)
+    try:
+        filename = normalize_upload_filename(file.filename)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    file.file.seek(0, SEEK_END)
+    size = file.file.tell()
+    file.file.seek(0)
+    if size == 0:
+        raise HTTPException(status_code=400, detail="The file is empty")
+    if size > MAX_FILE_SIZE:
+        raise HTTPException(status_code=413, detail="File exceeds the 50 MiB limit")
+
+    response = file_service.upload_file(db, file.file, filename, size, user.id)
 
     return response
 
@@ -62,9 +77,10 @@ def get_files_by_user(
 @router.get("/{file_id}", response_model=FileMetadataResponse)
 def get_file(
     file_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
-    return file_service.get_file(db, file_id)
+    return file_service.get_file(db, file_id, user)
 
 @router.delete("/{file_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_file(
@@ -78,14 +94,15 @@ def delete_file(
 @router.get("/{file_id}/download")
 def download_file(
     file_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
-    filename, stream_generator = file_service.stream_file(db, file_id)
+    filename, stream_generator = file_service.stream_file(db, file_id, user)
 
     return StreamingResponse(
         stream_generator(),
         media_type="application/octet-stream",
         headers={
-            "Content-Disposition": f"attachment; filename={filename}"
+            "Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename, safe='')}"
         }
     )

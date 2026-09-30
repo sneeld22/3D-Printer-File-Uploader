@@ -2,7 +2,7 @@
 
 ## Overview
 
-This project is a web-based portal designed for school students to upload 3D model files and send them automatically to a 3D printer for printing. It provides a streamlined, secure, and automated workflow to manage 3D printing requests within a school environment.
+This project is a web portal for school students to upload 3D models for review. Approved files are placed in a print queue. Physical printer integration is not implemented.
 
 ---
 
@@ -27,7 +27,7 @@ This project is a web-based portal designed for school students to upload 3D mod
 * **Database:** PostgreSQL
 * **Object Storage:** MinIO
 * **Authentication:** LDAP integration
-* **Deployment:** Docker & Docker Compose
+* **Deployment:** Docker Compose and Traefik
 
 ---
 
@@ -36,11 +36,11 @@ This project is a web-based portal designed for school students to upload 3D mod
 ### Prerequisites
 
 * Docker and Docker Compose installed
-* (Optional) Access to an LDAP server for authentication
+* Access to the school's LDAP server for authentication
 
 ---
 
-## 🚀 Quick Start (Recommended)
+## Local development
 
 ### 1. Clone the repository
 
@@ -59,14 +59,14 @@ Copy the example environment file:
 cp .env.example .env
 ```
 
-Then edit `.env` if needed (or use defaults for local development).
+Edit `.env` for your local database, MinIO, and LDAP settings. LDAP is required for login. The development stack publishes ports for local testing.
 
 ---
 
 ### 3. Start the application
 
 ```bash
-docker compose up -d
+docker compose -f docker-compose.dev.yml up --build -d
 ```
 
 ---
@@ -81,74 +81,91 @@ docker compose up -d
 
 ## ⚙️ Environment Variables
 
-All configuration is handled via a `.env` file.
+All configuration is handled via `.env`. Fill in every blank required value in `.env.example` before starting. The username, password, and database name in `DATABASE_URL` must match `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB` (URL-encode special characters in the URL). `JWT_SECRET` must be at least 32 characters.
 
-Example variables:
-
-```env
-# Database
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgres
-POSTGRES_DB=app
-DATABASE_URL=postgresql://postgres:postgres@db:5432/app
-
-# MinIO
-MINIO_ACCESS_KEY=minioadmin
-MINIO_SECRET_KEY=minioadmin
-MINIO_BUCKET=my-bucket
-MINIO_ENDPOINT=minio:9000
-MINIO_SECURE=false
-
-# Auth
-JWT_SECRET=change-me
-
-# Admin
-ADMIN_USER=admin
-ADMIN_PASSWORD=admin
-
-# LDAP (optional)
-LDAP_SERVER=
-LDAP_DOMAIN=
-BASE_DN=
-```
+`ADMIN_USER` must be the username of an existing LDAP account. That account receives the admin role on backend startup. `VERIFIER_USERS` is an optional comma-separated list of LDAP usernames; admins can also verify files. There is no separate local admin password or local login fallback.
 ---
 
-## 🐳 Docker & Deployment
+## Production deployment with Traefik
 
-This project uses prebuilt Docker images hosted on GitHub Container Registry (GHCR).
+The production stack serves the app at `https://sc.htl-kaindorf.at/3DPrint/`. Traefik routes `/3DPrint/api/` and the FastAPI documentation URLs (`/3DPrint/docs`, `/3DPrint/redoc`, `/3DPrint/openapi.json`) to the backend, and the rest of `/3DPrint/` to the React frontend. Both routes remove `/3DPrint` before forwarding. FastAPI is configured with that public root path for generated URLs. The browser uses `/3DPrint` for assets, navigation, and API calls. PostgreSQL, MinIO, and the app containers have no published host ports.
 
-When running:
+Run one Traefik instance for the whole server. The supplied `docker-compose.traefik.yml` is a separate stack so other applications such as Moodle can keep working when this app is restarted. It listens on ports 80 and 443, redirects HTTP to HTTPS, and requests a Let's Encrypt certificate with the HTTP challenge. The public DNS record for `sc.htl-kaindorf.at` must point to this server, port 80 must be reachable for certificate issuance, and ports 80/443 must be available to Traefik. If the server already has a Traefik instance, use that instance instead of starting this file; its Docker network, HTTPS entry point, and certificate resolver must match the labels in `docker-compose.yml`.
 
-```bash
-docker compose up -d
+1. Copy `.env.example` to `.env`. Set `TRAEFIK_ACME_EMAIL` to a real address, fill in the database and MinIO credentials, choose a strong JWT secret, and set the LDAP server, domain, and administrator username. Keep `.env` private.
+2. Create the shared network once and start Traefik:
+
+   ```bash
+   docker network create traefik_proxy
+   docker compose -f docker-compose.traefik.yml up -d
+   ```
+
+3. Build and start this application:
+
+   ```bash
+   docker compose up --build -d
+   ```
+
+4. Open `https://sc.htl-kaindorf.at/3DPrint/`. A direct visit to `/3DPrint/upload` should load the frontend, and an unauthenticated request to `/3DPrint/api/v1/auth/me` should return `401` from FastAPI.
+
+The frontend image must be rebuilt after changing the public base path because Vite writes `/3DPrint/` into the built assets. The `image:` entries can still be used for published GHCR images, provided those images were built from this version of the project.
+
+### Routing another application
+
+Attach the other application's container to the same external `traefik_proxy` network and add its own Traefik router. For a Moodle container listening on port 80, the relevant labels would be:
+
+```yaml
+labels:
+  - "traefik.enable=true"
+  - "traefik.docker.network=traefik_proxy"
+  - "traefik.http.routers.moodle.rule=Host(`sc.htl-kaindorf.at`) && PathPrefix(`/moodle/`)"
+  - "traefik.http.routers.moodle.entrypoints=websecure"
+  - "traefik.http.routers.moodle.tls=true"
+  - "traefik.http.routers.moodle.tls.certresolver=letsencrypt"
+  - "traefik.http.routers.moodle.middlewares=moodle-strip"
+  - "traefik.http.middlewares.moodle-strip.stripprefix.prefixes=/moodle"
+  - "traefik.http.services.moodle.loadbalancer.server.port=80"
 ```
 
-Docker will automatically:
-
-* Pull the latest backend and frontend images
-* Start all required services (PostgreSQL, MinIO, etc.)
-* Inject environment variables from `.env`
+The Moodle application must also be configured with its public URL under `https://sc.htl-kaindorf.at/moodle` so its links and assets use that prefix. Add an exact `/moodle` to `/moodle/` redirect if needed, as this project's `print-root` router does for `/3DPrint`.
 
 ---
 
 ## 🔄 Updating the Application
 
-To pull the latest version:
+To rebuild from the latest project source:
 
 ```bash
-docker compose pull
-docker compose up -d
+git pull
+docker compose up --build -d
 ```
 
 ---
 
 ## Usage
 
-* Log in using your LDAP account (if configured)
+* Log in using your LDAP account
 * Upload 3D model files via the web interface
 * Verifiers can review and approve uploaded files
 * Approved files are added to the printer queue
-* Monitor print job status directly in the portal
+* View queued print jobs in the portal; no printer worker is included
+
+---
+
+## Checks
+
+```bash
+cd backend
+python -m unittest discover -s tests -v
+
+cd ../frontend
+npm ci
+npm run lint
+npm run build
+npm audit
+```
+
+Test the real LDAP login, HTTPS routing, and certificate issuance on the target server before release.
 
 ---
 
@@ -158,5 +175,6 @@ docker compose up -d
 /frontend   → React frontend (Material UI)
 /backend    → FastAPI backend
 docker-compose.yml → Service orchestration
+docker-compose.traefik.yml → Shared HTTPS reverse proxy
 .env.example → Environment variable template
 ```

@@ -1,14 +1,40 @@
 // src/components/verifie/File3dPreview.tsx
-import type { FC } from "react";
+import { Component } from "react";
+import type { FC, ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { Box, CircularProgress, Typography } from "@mui/material";
 import { Canvas, useLoader } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
+import { ThreeMFLoader } from "three/examples/jsm/loaders/3MFLoader.js";
 import { downloadFile } from "../../services/fileService.ts";
 
 interface File3dPreviewProps {
     fileId: string | null;
+    filename: string | null;
+}
+
+class PreviewErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+    state = { failed: false };
+
+    static getDerivedStateFromError() {
+        return { failed: true };
+    }
+
+    componentDidCatch(error: Error) {
+        console.error("3D preview failed", error);
+    }
+
+    render() {
+        if (this.state.failed) {
+            return (
+                <Box sx={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Typography color="error">Preview unavailable for this file.</Typography>
+                </Box>
+            );
+        }
+        return this.props.children;
+    }
 }
 
 const STLModel: FC<{ url: string }> = ({ url }) => {
@@ -21,7 +47,12 @@ const STLModel: FC<{ url: string }> = ({ url }) => {
     );
 };
 
-const File3dPreview: FC<File3dPreviewProps> = ({ fileId }) => {
+const ThreeMFModel: FC<{ url: string }> = ({ url }) => {
+    const model = useLoader(ThreeMFLoader, url);
+    return <primitive object={model} />;
+};
+
+const File3dPreview: FC<File3dPreviewProps> = ({ fileId, filename }) => {
     const [fileUrl, setFileUrl] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -137,12 +168,16 @@ const File3dPreview: FC<File3dPreviewProps> = ({ fileId }) => {
             )}
 
             {fileUrl && (
-                <Canvas camera={{ position: [3, 3, 3] }}>
-                    <ambientLight intensity={0.5} />
-                    <directionalLight position={[5, 5, 5]} />
-                    <STLModel url={fileUrl} />
-                    <OrbitControls />
-                </Canvas>
+                <PreviewErrorBoundary key={fileId}>
+                    <Canvas camera={{ position: [3, 3, 3] }}>
+                        <ambientLight intensity={0.5} />
+                        <directionalLight position={[5, 5, 5]} />
+                        {filename?.toLowerCase().endsWith(".3mf")
+                            ? <ThreeMFModel url={fileUrl} />
+                            : <STLModel url={fileUrl} />}
+                        <OrbitControls />
+                    </Canvas>
+                </PreviewErrorBoundary>
             )}
         </Box>
     );

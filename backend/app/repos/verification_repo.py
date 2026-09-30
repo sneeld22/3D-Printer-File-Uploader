@@ -22,8 +22,7 @@ class VerificationRepository:
         )
 
         db.add(verification)
-        db.commit()
-        db.refresh(verification)
+        db.flush()
         return verification
 
     def get_latest(self, db: Session, file_id: UUID) -> ModelVerification | None:

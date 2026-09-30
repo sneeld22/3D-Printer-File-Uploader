@@ -6,6 +6,8 @@ from app.schemas.files import FileUploadResponse, FileMetadataResponse
 from uuid import UUID
 from datetime import datetime
 from app.db.models import ModelFile, PrintStatus
+from app.db.models import RoleEnum, User
+from typing import BinaryIO
 
 
 import logging
@@ -16,37 +18,45 @@ class FileService:
         self.minio = minio_service
         self.repo = model_file_repo
 
-    def upload_file(self, db: Session, file_bytes: bytes, filename: str, uploader_id: UUID) -> FileUploadResponse:
+    def upload_file(self, db: Session, file_obj: BinaryIO, filename: str, size: int, uploader_id: UUID) -> FileUploadResponse:
         logger.info(
             "Uploading file",
             extra={
                 "file_name": filename,
                 "uploader_id": str(uploader_id),
-                "size": len(file_bytes),
+                "size": size,
             },
         )
         
         object_name = self.minio.generate_object_name(filename)
         try:
             self.minio.upload(
-                file_obj=file_bytes,
+                file_obj=file_obj,
                 object_name=object_name,
-                length=len(file_bytes),
+                length=size,
             )
         except HTTPException:
             raise
-        except Exception as e:
+        except Exception:
             logger.exception(
                 "MinIO upload failed",
                 extra={"file_name": filename, "object_name": object_name},
             )
 
-            raise HTTPException (
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=f"File upload failed: {str(e)}"    
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="File upload failed",
             )
         
-        model_file = self.repo.create(db, filename, object_name, uploader_id, size=len(file_bytes))
+        try:
+            model_file = self.repo.create(db, filename, object_name, uploader_id, size=size)
+        except Exception:
+            logger.exception("Database record creation failed after upload", extra={"object_name": object_name})
+            try:
+                self.minio.client.remove_object(self.minio.bucket_name, object_name)
+            except Exception:
+                logger.exception("Failed to remove orphaned uploaded object", extra={"object_name": object_name})
+            raise
         
         return FileUploadResponse(
             id=model_file.id,
@@ -73,13 +83,8 @@ class FileService:
         files = self.repo.list_by_user(db, user_id)
         return [self._build_file_metadata(db, file) for file in files]
     
-    def get_file(self, db: Session, file_id: UUID) -> FileMetadataResponse:
-        file = self.repo.get_by_id(db, file_id)
-        if not file:
-            logger.warning("File not found", extra={"file_id": str(file_id)})
-            raise HTTPException(status_code=404, detail="File not found")
-            
-        
+    def get_file(self, db: Session, file_id: UUID, user: User) -> FileMetadataResponse:
+        file = self._get_readable_file(db, file_id, user)
         return self._build_file_metadata(db, file)
     
 
@@ -93,26 +98,34 @@ class FileService:
         # Delete from MinIO
         try:
             self.minio.client.remove_object(self.minio.bucket_name, file.minio_path)
-        except Exception as e:
+        except Exception:
             logger.exception(
             "Failed to delete file from MinIO",
             extra={"file_id": str(file_id), "path": file.minio_path},
             )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to delete file from storage: {str(e)}"
+                detail="Failed to delete file from storage"
             )
 
         # Delete from database
         self.repo.delete(db, file)
         logger.info("File deleted", extra={"file_id": str(file_id)})
     
-    def stream_file(self, db: Session, file_id: UUID):
-        file_record = file_service.repo.get_by_id(db, file_id)
+    def stream_file(self, db: Session, file_id: UUID, user: User):
+        file_record = self._get_readable_file(db, file_id, user)
+        return file_record.filename, self.minio.stream(file_record.minio_path)
+
+    def _get_readable_file(self, db: Session, file_id: UUID, user: User) -> ModelFile:
+        file_record = self.repo.get_by_id(db, file_id)
         if not file_record:
             raise HTTPException(status_code=404, detail="File not found")
-        
-        return file_record.filename, self.minio.stream(file_record.minio_path)
+
+        privileged_roles = {RoleEnum.admin, RoleEnum.verifier, RoleEnum.downloader}
+        user_roles = {role.role_id for role in user.roles}
+        if file_record.uploader_id != user.id and not user_roles.intersection(privileged_roles):
+            raise HTTPException(status_code=403, detail="Not allowed to access this file")
+        return file_record
     
 
     def _build_file_metadata(self, db: Session, file: ModelFile) -> FileMetadataResponse:

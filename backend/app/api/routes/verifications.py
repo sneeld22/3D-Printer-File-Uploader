@@ -12,6 +12,6 @@ router = APIRouter()
 async def verify_file(
     verification: VerificationCreate,
     db: Session = Depends(get_db),
-    user: User = Depends(require_role([RoleEnum.uploader, RoleEnum.admin])),
+    user: User = Depends(require_role([RoleEnum.verifier, RoleEnum.admin])),
 ):
     return verification_service.verify_file(db, verification, user.id)

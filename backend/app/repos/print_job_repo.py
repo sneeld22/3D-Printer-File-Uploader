@@ -17,8 +17,7 @@ class PrintJobRepository:
             created_at=datetime.utcnow()
         )
         db.add(job)
-        db.commit()
-        db.refresh(job)
+        db.flush()
         return job
 
     def get_by_id(self, db: Session, job_id: UUID) -> PrintJob | None:
